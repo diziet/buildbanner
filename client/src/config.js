@@ -20,7 +20,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   token: null,
   manual: false,
   zIndex: 999999,
-  hostPatterns: [],
+  hostPatterns: Object.freeze([]),
 });
 
 /** Parse a boolean data attribute string. */
@@ -65,7 +65,7 @@ function _validateEnum(value, allowed, fallback) {
  */
 export function parseConfig(scriptElement) {
   if (!scriptElement || typeof scriptElement.getAttribute !== "function") {
-    return { ...DEFAULT_CONFIG };
+    return { ...DEFAULT_CONFIG, hostPatterns: [...DEFAULT_CONFIG.hostPatterns] };
   }
 
   const get = (name) => scriptElement.getAttribute(`data-${name}`);
@@ -77,15 +77,15 @@ export function parseConfig(scriptElement) {
     position: _validateEnum(get("position"), VALID_POSITIONS, DEFAULT_CONFIG.position),
     theme: _validateEnum(get("theme"), VALID_THEMES, DEFAULT_CONFIG.theme),
     dismiss: _validateEnum(get("dismiss"), VALID_DISMISS, DEFAULT_CONFIG.dismiss),
-    envHide: _parseList(get("env-hide")),
+    envHide: _parseList(get("env-hide")) ?? DEFAULT_CONFIG.envHide,
     height: _clamp(rawHeight, HEIGHT_MIN, HEIGHT_MAX),
     debug: _parseBool(get("debug"), DEFAULT_CONFIG.debug),
-    poll: _parseInt(get("poll"), DEFAULT_CONFIG.poll),
+    poll: Math.max(0, _parseInt(get("poll"), DEFAULT_CONFIG.poll)),
     push: _parseBool(get("push"), DEFAULT_CONFIG.push),
     token: get("token") || DEFAULT_CONFIG.token,
     manual: _parseBool(get("manual"), DEFAULT_CONFIG.manual),
     zIndex: DEFAULT_CONFIG.zIndex,
-    hostPatterns: DEFAULT_CONFIG.hostPatterns,
+    hostPatterns: [...DEFAULT_CONFIG.hostPatterns],
   };
 }
 
@@ -94,33 +94,36 @@ export function parseConfig(scriptElement) {
  * Programmatic options win over data attributes.
  */
 export function resolveConfig(dataAttrs, programmaticOpts) {
-  const base = dataAttrs || { ...DEFAULT_CONFIG };
+  const base = dataAttrs || { ...DEFAULT_CONFIG, hostPatterns: [...DEFAULT_CONFIG.hostPatterns] };
   const opts = programmaticOpts || {};
 
   const merged = { ...base };
 
   if (opts.endpoint !== undefined) merged.endpoint = opts.endpoint;
-  if (opts.position !== undefined) {
-    merged.position = _validateEnum(opts.position, VALID_POSITIONS, base.position);
+
+  const ENUM_FIELDS = { position: VALID_POSITIONS, theme: VALID_THEMES, dismiss: VALID_DISMISS };
+  for (const [key, allowed] of Object.entries(ENUM_FIELDS)) {
+    if (opts[key] !== undefined) merged[key] = _validateEnum(opts[key], allowed, base[key]);
   }
-  if (opts.theme !== undefined) {
-    merged.theme = _validateEnum(opts.theme, VALID_THEMES, base.theme);
-  }
-  if (opts.dismiss !== undefined) {
-    merged.dismiss = _validateEnum(opts.dismiss, VALID_DISMISS, base.dismiss);
-  }
+
   if (opts.envHide !== undefined) {
     merged.envHide = Array.isArray(opts.envHide) ? opts.envHide : _parseList(opts.envHide);
   }
   if (opts.height !== undefined) {
-    merged.height = _clamp(Number(opts.height) || base.height, HEIGHT_MIN, HEIGHT_MAX);
+    const h = Number(opts.height);
+    merged.height = _clamp(Number.isNaN(h) ? base.height : h, HEIGHT_MIN, HEIGHT_MAX);
   }
-  if (opts.debug !== undefined) merged.debug = !!opts.debug;
-  if (opts.poll !== undefined) merged.poll = _parseInt(opts.poll, base.poll);
-  if (opts.push !== undefined) merged.push = !!opts.push;
+
+  for (const key of ["debug", "push", "manual"]) {
+    if (opts[key] !== undefined) merged[key] = !!opts[key];
+  }
+
+  if (opts.poll !== undefined) merged.poll = Math.max(0, _parseInt(opts.poll, base.poll));
   if (opts.token !== undefined) merged.token = opts.token || null;
-  if (opts.manual !== undefined) merged.manual = !!opts.manual;
-  if (opts.zIndex !== undefined) merged.zIndex = Number(opts.zIndex) || base.zIndex;
+  if (opts.zIndex !== undefined) {
+    const z = Number(opts.zIndex);
+    merged.zIndex = Number.isNaN(z) ? base.zIndex : z;
+  }
   if (opts.hostPatterns !== undefined) {
     merged.hostPatterns = Array.isArray(opts.hostPatterns) ? opts.hostPatterns : base.hostPatterns;
   }

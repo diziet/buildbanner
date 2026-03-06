@@ -46,52 +46,43 @@ describe("shared/schema.json", () => {
     expect(result).toBe(false);
   });
 
-  it("accepts _buildbanner.version as integer only", () => {
-    const validate = createValidator();
-
-    const validInt = validate({
-      ...BASE_PAYLOAD,
-      _buildbanner: { version: 1 },
+  /** Verify a schema field accepts only integer values. */
+  function testIntegerOnlyField(fieldName, validPayload, floatPayload, stringPayload) {
+    it(`accepts ${fieldName} as integer only`, () => {
+      const validate = createValidator();
+      expect(validate({ ...BASE_PAYLOAD, ...validPayload })).toBe(true);
+      expect(validate({ ...BASE_PAYLOAD, ...floatPayload })).toBe(false);
+      expect(validate({ ...BASE_PAYLOAD, ...stringPayload })).toBe(false);
     });
-    expect(validInt).toBe(true);
+  }
 
-    const invalidFloat = validate({
-      ...BASE_PAYLOAD,
-      _buildbanner: { version: 1.5 },
-    });
-    expect(invalidFloat).toBe(false);
+  testIntegerOnlyField(
+    "_buildbanner.version",
+    { _buildbanner: { version: 1 } },
+    { _buildbanner: { version: 1.5 } },
+    { _buildbanner: { version: "1" } },
+  );
 
-    const invalidString = validate({
-      ...BASE_PAYLOAD,
-      _buildbanner: { version: "1" },
-    });
-    expect(invalidString).toBe(false);
-  });
-
-  it("accepts port as integer only", () => {
-    const validate = createValidator();
-
-    const validInt = validate({
-      ...BASE_PAYLOAD,
-      port: 8001,
-    });
-    expect(validInt).toBe(true);
-
-    const invalidString = validate({
-      ...BASE_PAYLOAD,
-      port: "8001",
-    });
-    expect(invalidString).toBe(false);
-
-    const invalidFloat = validate({
-      ...BASE_PAYLOAD,
-      port: 80.5,
-    });
-    expect(invalidFloat).toBe(false);
-  });
+  testIntegerOnlyField(
+    "port",
+    { port: 8001 },
+    { port: 80.5 },
+    { port: "8001" },
+  );
 });
 
 describe("shared/test_fixtures.json", () => {
+  /** Assert an array has the expected length and each entry has the required keys. */
+  function expectArrayWithShape(array, expectedLength, requiredKeys) {
+    expect(Array.isArray(array)).toBe(true);
+    expect(array.length).toBe(expectedLength);
+    for (const entry of array) {
+      for (const key of requiredKeys) {
+        expect(entry).toHaveProperty(key);
+      }
+    }
+  }
+
   it("is valid JSON with all expected keys", () => {
     expect(fixtures).toHaveProperty("url_sanitization");
     expect(fixtures).toHaveProperty("branch_detection");
@@ -100,31 +91,15 @@ describe("shared/test_fixtures.json", () => {
   });
 
   it("url_sanitization is an array with expected entries", () => {
-    expect(Array.isArray(fixtures.url_sanitization)).toBe(true);
-    expect(fixtures.url_sanitization.length).toBe(13);
-    for (const entry of fixtures.url_sanitization) {
-      expect(entry).toHaveProperty("input");
-      expect(entry).toHaveProperty("expected");
-    }
+    expectArrayWithShape(fixtures.url_sanitization, 13, ["input", "expected"]);
   });
 
   it("branch_detection is an array with expected entries", () => {
-    expect(Array.isArray(fixtures.branch_detection)).toBe(true);
-    expect(fixtures.branch_detection.length).toBe(4);
-    for (const entry of fixtures.branch_detection) {
-      expect(entry).toHaveProperty("input");
-      expect(entry).toHaveProperty("tag");
-      expect(entry).toHaveProperty("expected");
-    }
+    expectArrayWithShape(fixtures.branch_detection, 4, ["input", "tag", "expected"]);
   });
 
   it("valid_responses is an array of 3 payloads", () => {
-    expect(Array.isArray(fixtures.valid_responses)).toBe(true);
-    expect(fixtures.valid_responses.length).toBe(3);
-    for (const entry of fixtures.valid_responses) {
-      expect(entry).toHaveProperty("description");
-      expect(entry).toHaveProperty("payload");
-    }
+    expectArrayWithShape(fixtures.valid_responses, 3, ["description", "payload"]);
   });
 
   it("env_var_mapping has all expected env vars", () => {

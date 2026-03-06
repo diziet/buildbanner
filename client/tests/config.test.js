@@ -221,6 +221,18 @@ describe("parseConfig", () => {
     expect(config.hostPatterns).toEqual([]);
   });
 
+  it("returns independent hostPatterns arrays across calls", () => {
+    const config1 = parseConfig(mockElement());
+    const config2 = parseConfig(mockElement());
+    config1.hostPatterns.push("test");
+    expect(config2.hostPatterns).toEqual([]);
+  });
+
+  it("clamps negative poll to zero", () => {
+    const config = parseConfig(mockElement({ poll: "-5" }));
+    expect(config.poll).toBe(0);
+  });
+
   it("is case-insensitive for enum values", () => {
     const config = parseConfig(mockElement({ position: "TOP", theme: "DARK", dismiss: "SESSION" }));
     expect(config.position).toBe("top");
@@ -316,5 +328,23 @@ describe("resolveConfig", () => {
     const dataAttrs = parseConfig(mockElement());
     const resolved = resolveConfig(dataAttrs, { token: "" });
     expect(resolved.token).toBeNull();
+  });
+
+  it("clamps programmatic height:0 to HEIGHT_MIN (24)", () => {
+    const dataAttrs = parseConfig(mockElement());
+    const resolved = resolveConfig(dataAttrs, { height: 0 });
+    expect(resolved.height).toBe(24);
+  });
+
+  it("accepts programmatic zIndex:0", () => {
+    const dataAttrs = parseConfig(mockElement());
+    const resolved = resolveConfig(dataAttrs, { zIndex: 0 });
+    expect(resolved.zIndex).toBe(0);
+  });
+
+  it("clamps negative programmatic poll to zero", () => {
+    const dataAttrs = parseConfig(mockElement());
+    const resolved = resolveConfig(dataAttrs, { poll: -10 });
+    expect(resolved.poll).toBe(0);
   });
 });
