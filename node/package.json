@@ -1,0 +1,10 @@
+{
+  "name": "buildbanner-server",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "BuildBanner server helpers for Express, Koa, and Hono",
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "supertest": "^7.0.0"
+  }
+}

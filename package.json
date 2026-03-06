@@ -1,0 +1,8 @@
+{
+  "name": "buildbanner-monorepo",
+  "private": true,
+  "workspaces": [
+    "client/",
+    "node/"
+  ]
+}
