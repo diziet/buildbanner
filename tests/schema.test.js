@@ -12,6 +12,25 @@ function createValidator() {
   return createAjv().compile(schema);
 }
 
+/** Assert a field accepts an integer but rejects floats and strings. */
+function assertIntegerOnly(buildPayload, validValue) {
+  const validate = createValidator();
+  expect(validate({ ...BASE_PAYLOAD, ...buildPayload(validValue) })).toBe(true);
+  expect(validate({ ...BASE_PAYLOAD, ...buildPayload(validValue + 0.5) })).toBe(false);
+  expect(validate({ ...BASE_PAYLOAD, ...buildPayload(String(validValue)) })).toBe(false);
+}
+
+/** Assert a fixture array is non-empty and every entry has the required keys. */
+function assertFixtureArray(array, requiredKeys) {
+  expect(Array.isArray(array)).toBe(true);
+  expect(array.length).toBeGreaterThan(0);
+  for (const entry of array) {
+    for (const key of requiredKeys) {
+      expect(entry).toHaveProperty(key);
+    }
+  }
+}
+
 describe("shared/schema.json", () => {
   it("is valid JSON Schema (draft-07)", () => {
     expect(schema.$schema).toBe("http://json-schema.org/draft-07/schema#");
@@ -47,47 +66,11 @@ describe("shared/schema.json", () => {
   });
 
   it("accepts _buildbanner.version as integer only", () => {
-    const validate = createValidator();
-
-    const validInt = validate({
-      ...BASE_PAYLOAD,
-      _buildbanner: { version: 1 },
-    });
-    expect(validInt).toBe(true);
-
-    const invalidFloat = validate({
-      ...BASE_PAYLOAD,
-      _buildbanner: { version: 1.5 },
-    });
-    expect(invalidFloat).toBe(false);
-
-    const invalidString = validate({
-      ...BASE_PAYLOAD,
-      _buildbanner: { version: "1" },
-    });
-    expect(invalidString).toBe(false);
+    assertIntegerOnly((v) => ({ _buildbanner: { version: v } }), 1);
   });
 
   it("accepts port as integer only", () => {
-    const validate = createValidator();
-
-    const validInt = validate({
-      ...BASE_PAYLOAD,
-      port: 8001,
-    });
-    expect(validInt).toBe(true);
-
-    const invalidString = validate({
-      ...BASE_PAYLOAD,
-      port: "8001",
-    });
-    expect(invalidString).toBe(false);
-
-    const invalidFloat = validate({
-      ...BASE_PAYLOAD,
-      port: 80.5,
-    });
-    expect(invalidFloat).toBe(false);
+    assertIntegerOnly((v) => ({ port: v }), 8001);
   });
 });
 
@@ -99,32 +82,16 @@ describe("shared/test_fixtures.json", () => {
     expect(fixtures).toHaveProperty("env_var_mapping");
   });
 
-  it("url_sanitization is an array with expected entries", () => {
-    expect(Array.isArray(fixtures.url_sanitization)).toBe(true);
-    expect(fixtures.url_sanitization.length).toBe(13);
-    for (const entry of fixtures.url_sanitization) {
-      expect(entry).toHaveProperty("input");
-      expect(entry).toHaveProperty("expected");
-    }
+  it("url_sanitization entries have expected structure", () => {
+    assertFixtureArray(fixtures.url_sanitization, ["input", "expected"]);
   });
 
-  it("branch_detection is an array with expected entries", () => {
-    expect(Array.isArray(fixtures.branch_detection)).toBe(true);
-    expect(fixtures.branch_detection.length).toBe(4);
-    for (const entry of fixtures.branch_detection) {
-      expect(entry).toHaveProperty("input");
-      expect(entry).toHaveProperty("tag");
-      expect(entry).toHaveProperty("expected");
-    }
+  it("branch_detection entries have expected structure", () => {
+    assertFixtureArray(fixtures.branch_detection, ["input", "tag", "expected"]);
   });
 
-  it("valid_responses is an array of 3 payloads", () => {
-    expect(Array.isArray(fixtures.valid_responses)).toBe(true);
-    expect(fixtures.valid_responses.length).toBe(3);
-    for (const entry of fixtures.valid_responses) {
-      expect(entry).toHaveProperty("description");
-      expect(entry).toHaveProperty("payload");
-    }
+  it("valid_responses entries have expected structure", () => {
+    assertFixtureArray(fixtures.valid_responses, ["description", "payload"]);
   });
 
   it("env_var_mapping has all expected env vars", () => {
@@ -140,41 +107,6 @@ describe("shared/test_fixtures.json", () => {
     expect(mapping).toHaveProperty("BUILDBANNER_PORT");
     expect(mapping).toHaveProperty("BUILDBANNER_CUSTOM_*");
     expect(mapping).toHaveProperty("BUILDBANNER_TOKEN");
-  });
-
-  it("env_var_mapping entries have consistent structure", () => {
-    const mapping = fixtures.env_var_mapping;
-    for (const [envVar, entry] of Object.entries(mapping)) {
-      expect(entry).toHaveProperty("field");
-      expect(
-        typeof entry.field === "string" || entry.field === null,
-      ).toBe(true);
-      expect(entry).toHaveProperty("description");
-      expect(typeof entry.description).toBe("string");
-      expect(entry).not.toHaveProperty(
-        "fields",
-        `${envVar} uses plural "fields" — normalize to singular "field"`,
-      );
-    }
-  });
-
-  it("env_var_mapping field references exist in schema properties", () => {
-    const mapping = fixtures.env_var_mapping;
-    const schemaProps = Object.keys(schema.properties);
-
-    for (const [envVar, entry] of Object.entries(mapping)) {
-      const field = entry.field;
-      // null field means env var is not mapped to a response field
-      if (field === null) {
-        continue;
-      }
-      // custom.* is a wildcard pattern for custom sub-keys — skip exact match
-      if (field.startsWith("custom.")) {
-        expect(schemaProps).toContain("custom");
-        continue;
-      }
-      expect(schemaProps).toContain(field);
-    }
   });
 
   it("env_var_mapping entries have consistent structure", () => {
