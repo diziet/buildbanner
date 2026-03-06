@@ -68,13 +68,13 @@ describe("monorepo scaffold", () => {
   });
 
   describe("node/package.json", () => {
+    const pkg = readJson("node/package.json");
+
     it("has correct name", () => {
-      const pkg = readJson("node/package.json");
       expect(pkg.name).toBe("buildbanner-server");
     });
 
     it("has vitest and supertest as devDependencies", () => {
-      const pkg = readJson("node/package.json");
       expect(pkg.devDependencies).toHaveProperty("vitest");
       expect(pkg.devDependencies).toHaveProperty("supertest");
     });
