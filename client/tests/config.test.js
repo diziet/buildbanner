@@ -186,6 +186,13 @@ describe("parseConfig", () => {
     const config = parseConfig(mockScript());
     expect(config.hostPatterns).toEqual([]);
   });
+
+  it("returns independent hostPatterns arrays across calls", () => {
+    const config1 = parseConfig(mockScript());
+    const config2 = parseConfig(null);
+    config1.hostPatterns.push("test");
+    expect(config2.hostPatterns).toEqual([]);
+  });
 });
 
 describe("resolveConfig", () => {
@@ -236,5 +243,23 @@ describe("resolveConfig", () => {
     expect(config.position).toBe("top");
     expect(config.height).toBe(28);
     expect(config.zIndex).toBe(999999);
+  });
+
+  it("falls back to base endpoint for empty string", () => {
+    const config = resolveConfig({ endpoint: "/api/v1" }, { endpoint: "" });
+    expect(config.endpoint).toBe("/api/v1");
+  });
+
+  it("returns independent hostPatterns from resolveConfig", () => {
+    const dataAttrs = parseConfig(mockScript());
+    const config1 = resolveConfig(dataAttrs, {});
+    const config2 = resolveConfig(dataAttrs, {});
+    config1.hostPatterns.push("test");
+    expect(config2.hostPatterns).toEqual([]);
+  });
+
+  it("accepts programmatic zIndex:0", () => {
+    const config = resolveConfig({}, { zIndex: 0 });
+    expect(config.zIndex).toBe(0);
   });
 });

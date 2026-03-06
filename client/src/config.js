@@ -67,7 +67,7 @@ function _validateEnum(value, allowed, defaultValue) {
 /** Parse config from a script element's data attributes. */
 export function parseConfig(scriptElement) {
   if (!scriptElement || typeof scriptElement.getAttribute !== "function") {
-    return { ...DEFAULT_CONFIG };
+    return { ...DEFAULT_CONFIG, hostPatterns: [...DEFAULT_CONFIG.hostPatterns] };
   }
 
   return {
@@ -75,7 +75,7 @@ export function parseConfig(scriptElement) {
     position: _validateEnum(scriptElement.getAttribute("data-position"), VALID_POSITIONS, DEFAULT_CONFIG.position),
     theme: _validateEnum(scriptElement.getAttribute("data-theme"), VALID_THEMES, DEFAULT_CONFIG.theme),
     dismiss: _validateEnum(scriptElement.getAttribute("data-dismiss"), VALID_DISMISS, DEFAULT_CONFIG.dismiss),
-    envHide: _parseEnvHide(scriptElement.getAttribute("data-env-hide")),
+    envHide: _parseEnvHide(scriptElement.getAttribute("data-env-hide")) ?? DEFAULT_CONFIG.envHide,
     height: _parseHeight(scriptElement.getAttribute("data-height")),
     debug: _parseBool(scriptElement.getAttribute("data-debug"), DEFAULT_CONFIG.debug),
     poll: _parsePoll(scriptElement.getAttribute("data-poll")),
@@ -83,7 +83,7 @@ export function parseConfig(scriptElement) {
     token: scriptElement.getAttribute("data-token") || null,
     manual: _parseBool(scriptElement.getAttribute("data-manual"), DEFAULT_CONFIG.manual),
     zIndex: DEFAULT_CONFIG.zIndex,
-    hostPatterns: DEFAULT_CONFIG.hostPatterns,
+    hostPatterns: [...DEFAULT_CONFIG.hostPatterns],
   };
 }
 
@@ -99,6 +99,14 @@ export function resolveConfig(dataAttrs, programmaticOpts) {
   for (const key of Object.keys(programmaticOpts)) {
     if (!(key in DEFAULT_CONFIG)) continue;
     merged[key] = programmaticOpts[key];
+  }
+
+  // Normalize endpoint — falsy values fall back to base, matching parseConfig
+  if (!merged.endpoint) merged.endpoint = base.endpoint;
+
+  // Defensive copy to prevent shared mutable array references
+  if (Array.isArray(merged.hostPatterns)) {
+    merged.hostPatterns = [...merged.hostPatterns];
   }
 
   return merged;

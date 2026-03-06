@@ -1,11 +1,12 @@
 /** Shared test utilities for BuildBanner test suite. */
 import { readFileSync } from "fs";
-import { resolve } from "path";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 
 /** Project root directory. */
-export const ROOT = resolve(import.meta.dirname, "..");
+export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Read and parse a JSON file relative to the project root. */
 export function readJson(relativePath) {
