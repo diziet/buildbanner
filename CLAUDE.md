@@ -36,5 +36,6 @@ tests/           Top-level monorepo tests (scaffold, schema)
 ## Conventions
 
 - Commit messages: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`.
+- First commit on a task branch must start with `Task N:` (e.g., `Task 7: feat: add time formatting module`).
 - Every task produces tests. Every test file named explicitly in the task.
 - Server helper tests must mock git subprocess/exec — no dependency on `.git` or `git` binary.
