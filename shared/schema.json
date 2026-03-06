@@ -3,12 +3,34 @@
   "$id": "https://buildbanner.dev/schema.json",
   "title": "BuildBanner Response",
   "description": "JSON contract for the BuildBanner /buildbanner.json endpoint.",
+  "definitions": {
+    "statusIndicator": {
+      "type": "object",
+      "description": "Base schema for status indicator objects (tests, build).",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string",
+          "description": "Human-readable status summary."
+        },
+        "url": {
+          "type": "string",
+          "description": "Clickable link to status details."
+        }
+      },
+      "required": ["status"],
+      "additionalProperties": false
+    }
+  },
   "type": "object",
   "required": ["sha", "branch"],
   "properties": {
     "sha": {
       "type": ["string", "null"],
       "description": "Short (7-char) git SHA of the current commit.",
+      "minLength": 7,
       "maxLength": 7
     },
     "branch": {
@@ -65,44 +87,32 @@
       "description": "Application name."
     },
     "tests": {
-      "type": "object",
       "description": "Live test status indicator.",
-      "properties": {
-        "status": {
-          "type": "string",
-          "enum": ["pass", "fail", "running", "idle"]
-        },
-        "summary": {
-          "type": "string",
-          "description": "Human-readable test summary."
-        },
-        "url": {
-          "type": "string",
-          "description": "Clickable link to test details."
+      "allOf": [
+        { "$ref": "#/definitions/statusIndicator" },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": ["pass", "fail", "running", "idle"]
+            }
+          }
         }
-      },
-      "required": ["status"],
-      "additionalProperties": false
+      ]
     },
     "build": {
-      "type": "object",
       "description": "Live build status indicator.",
-      "properties": {
-        "status": {
-          "type": "string",
-          "enum": ["fresh", "stale", "building"]
-        },
-        "summary": {
-          "type": "string",
-          "description": "Human-readable build summary."
-        },
-        "url": {
-          "type": "string",
-          "description": "Clickable link to build details."
+      "allOf": [
+        { "$ref": "#/definitions/statusIndicator" },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": ["fresh", "stale", "building"]
+            }
+          }
         }
-      },
-      "required": ["status"],
-      "additionalProperties": false
+      ]
     },
     "custom": {
       "type": "object",
