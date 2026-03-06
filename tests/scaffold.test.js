@@ -1,15 +1,8 @@
 /** Tests that the monorepo scaffold has all expected structure. */
 import { describe, it, expect } from "vitest";
-import { existsSync, readFileSync } from "fs";
+import { existsSync } from "fs";
 import { resolve } from "path";
-
-const ROOT = resolve(import.meta.dirname, "..");
-
-/** Read and parse a JSON file relative to the project root. */
-function readJson(relativePath) {
-  const fullPath = resolve(ROOT, relativePath);
-  return JSON.parse(readFileSync(fullPath, "utf-8"));
-}
+import { ROOT, readJson } from "./helpers.js";
 
 describe("monorepo scaffold", () => {
   describe("expected directories exist", () => {
@@ -75,13 +68,13 @@ describe("monorepo scaffold", () => {
   });
 
   describe("node/package.json", () => {
-    const pkg = readJson("node/package.json");
-
     it("has correct name", () => {
+      const pkg = readJson("node/package.json");
       expect(pkg.name).toBe("buildbanner-server");
     });
 
     it("has vitest and supertest as devDependencies", () => {
+      const pkg = readJson("node/package.json");
       expect(pkg.devDependencies).toHaveProperty("vitest");
       expect(pkg.devDependencies).toHaveProperty("supertest");
     });

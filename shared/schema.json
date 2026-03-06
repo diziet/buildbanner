@@ -1,1 +1,116 @@
-{}
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://buildbanner.dev/schema.json",
+  "title": "BuildBanner Response",
+  "description": "JSON contract for the BuildBanner /buildbanner.json endpoint.",
+  "type": "object",
+  "required": ["sha", "branch"],
+  "properties": {
+    "sha": {
+      "type": ["string", "null"],
+      "description": "Short (7-char) git SHA of the current commit.",
+      "maxLength": 7
+    },
+    "branch": {
+      "type": ["string", "null"],
+      "description": "Current branch name. Null if detached HEAD with no tag."
+    },
+    "_buildbanner": {
+      "type": "object",
+      "description": "Protocol version metadata.",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "description": "Contract version number."
+        }
+      },
+      "required": ["version"],
+      "additionalProperties": false
+    },
+    "sha_full": {
+      "type": "string",
+      "description": "Full 40-character git SHA.",
+      "minLength": 40,
+      "maxLength": 40
+    },
+    "commit_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of the commit."
+    },
+    "repo_url": {
+      "type": ["string", "null"],
+      "description": "Sanitized repository URL (no tokens, no .git suffix)."
+    },
+    "server_started": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the server process started."
+    },
+    "deployed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when this version was deployed."
+    },
+    "environment": {
+      "type": "string",
+      "description": "Deployment environment (e.g. development, staging, production)."
+    },
+    "port": {
+      "type": "integer",
+      "description": "Server port number."
+    },
+    "app_name": {
+      "type": "string",
+      "description": "Application name."
+    },
+    "tests": {
+      "type": "object",
+      "description": "Live test status indicator.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "running", "idle"]
+        },
+        "summary": {
+          "type": "string",
+          "description": "Human-readable test summary."
+        },
+        "url": {
+          "type": "string",
+          "description": "Clickable link to test details."
+        }
+      },
+      "required": ["status"],
+      "additionalProperties": false
+    },
+    "build": {
+      "type": "object",
+      "description": "Live build status indicator.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["fresh", "stale", "building"]
+        },
+        "summary": {
+          "type": "string",
+          "description": "Human-readable build summary."
+        },
+        "url": {
+          "type": "string",
+          "description": "Clickable link to build details."
+        }
+      },
+      "required": ["status"],
+      "additionalProperties": false
+    },
+    "custom": {
+      "type": "object",
+      "description": "Flat string-to-string map for app-specific data.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}
