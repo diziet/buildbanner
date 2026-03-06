@@ -124,6 +124,7 @@
     "BUILDBANNER_APP_NAME": { "field": "app_name", "description": "Sets the application name." },
     "BUILDBANNER_ENVIRONMENT": { "field": "environment", "description": "Sets the deployment environment." },
     "BUILDBANNER_PORT": { "field": "port", "description": "Sets the server port number." },
-    "BUILDBANNER_CUSTOM_*": { "field": "custom.*", "description": "Maps to custom entries. Suffix after BUILDBANNER_CUSTOM_ is lowercased as the key." }
+    "BUILDBANNER_CUSTOM_*": { "field": "custom.*", "description": "Maps to custom entries. Suffix after BUILDBANNER_CUSTOM_ is lowercased as the key." },
+    "BUILDBANNER_TOKEN": { "field": null, "description": "Shared secret for endpoint access control. Compared against request header — never included in response." }
   }
 }
