@@ -115,7 +115,8 @@
     }
   ],
   "env_var_mapping": {
-    "BUILDBANNER_SHA": { "fields": ["sha", "sha_full"], "description": "Overrides git SHA. Short form maps to sha, full 40-char form maps to sha_full." },
+    "BUILDBANNER_SHA": { "field": "sha", "description": "Overrides short (7-char) git SHA." },
+    "BUILDBANNER_SHA_FULL": { "field": "sha_full", "description": "Overrides full (40-char) git SHA." },
     "BUILDBANNER_BRANCH": { "field": "branch", "description": "Overrides git branch name." },
     "BUILDBANNER_REPO_URL": { "field": "repo_url", "description": "Overrides git remote URL. Still sanitized." },
     "BUILDBANNER_COMMIT_DATE": { "field": "commit_date", "description": "Overrides git commit date. ISO 8601 UTC." },
@@ -123,7 +124,6 @@
     "BUILDBANNER_APP_NAME": { "field": "app_name", "description": "Sets the application name." },
     "BUILDBANNER_ENVIRONMENT": { "field": "environment", "description": "Sets the deployment environment." },
     "BUILDBANNER_PORT": { "field": "port", "description": "Sets the server port number." },
-    "BUILDBANNER_CUSTOM_*": { "field": "custom.*", "description": "Maps to custom entries. Suffix after BUILDBANNER_CUSTOM_ is lowercased as the key." },
-    "BUILDBANNER_TOKEN": { "field": "token", "description": "Sets the auth token for endpoint access." }
+    "BUILDBANNER_CUSTOM_*": { "field": "custom.*", "description": "Maps to custom entries. Suffix after BUILDBANNER_CUSTOM_ is lowercased as the key." }
   }
 }

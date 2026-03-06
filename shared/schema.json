@@ -8,7 +8,8 @@
   "properties": {
     "sha": {
       "type": ["string", "null"],
-      "description": "Short (7-char) or full git SHA of the current commit."
+      "description": "Short (7-char) git SHA of the current commit.",
+      "maxLength": 7
     },
     "branch": {
       "type": ["string", "null"],
