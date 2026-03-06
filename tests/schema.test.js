@@ -37,6 +37,12 @@ describe("shared/schema.json", () => {
     expect(result).toBe(false);
   });
 
+  it("rejects sha shorter than 7 characters", () => {
+    const validate = createValidator();
+    expect(validate({ sha: "a1b", branch: "main" })).toBe(false);
+    expect(validate({ sha: "", branch: "main" })).toBe(false);
+  });
+
   it("rejects a response with non-string custom value", () => {
     const validate = createValidator();
     const result = validate({

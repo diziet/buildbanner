@@ -9,6 +9,7 @@
     "sha": {
       "type": ["string", "null"],
       "description": "Short (7-char) git SHA of the current commit.",
+      "minLength": 7,
       "maxLength": 7
     },
     "branch": {
