@@ -176,4 +176,39 @@ describe("shared/test_fixtures.json", () => {
       expect(schemaProps).toContain(field);
     }
   });
+
+  it("env_var_mapping entries have consistent structure", () => {
+    const mapping = fixtures.env_var_mapping;
+    for (const [envVar, entry] of Object.entries(mapping)) {
+      expect(entry).toHaveProperty("field");
+      expect(
+        typeof entry.field === "string" || entry.field === null,
+      ).toBe(true);
+      expect(entry).toHaveProperty("description");
+      expect(typeof entry.description).toBe("string");
+      expect(entry).not.toHaveProperty(
+        "fields",
+        `${envVar} uses plural "fields" — normalize to singular "field"`,
+      );
+    }
+  });
+
+  it("env_var_mapping field references exist in schema properties", () => {
+    const mapping = fixtures.env_var_mapping;
+    const schemaProps = Object.keys(schema.properties);
+
+    for (const [envVar, entry] of Object.entries(mapping)) {
+      const field = entry.field;
+      // null field means env var is not mapped to a response field
+      if (field === null) {
+        continue;
+      }
+      // custom.* is a wildcard pattern for custom sub-keys — skip exact match
+      if (field.startsWith("custom.")) {
+        expect(schemaProps).toContain("custom");
+        continue;
+      }
+      expect(schemaProps).toContain(field);
+    }
+  });
 });
