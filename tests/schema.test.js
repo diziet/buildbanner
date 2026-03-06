@@ -1,32 +1,21 @@
 /** Tests for shared JSON Schema and test fixtures. */
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
-import { resolve } from "path";
-import Ajv from "ajv";
-import addFormats from "ajv-formats";
-
-const ROOT = resolve(import.meta.dirname, "..");
-
-/** Read and parse a JSON file relative to the project root. */
-function readJson(relativePath) {
-  return JSON.parse(readFileSync(resolve(ROOT, relativePath), "utf-8"));
-}
+import { readJson, createAjv } from "./helpers.js";
 
 const schema = readJson("shared/schema.json");
 const fixtures = readJson("shared/test_fixtures.json");
 
-/** Create a configured Ajv instance with format validation. */
+const BASE_PAYLOAD = { sha: "a1b2c3d", branch: "main" };
+
+/** Compile the schema into a validator using shared Ajv instance. */
 function createValidator() {
-  const ajv = new Ajv({ allErrors: true });
-  addFormats(ajv);
-  return ajv.compile(schema);
+  return createAjv().compile(schema);
 }
 
 describe("shared/schema.json", () => {
   it("is valid JSON Schema (draft-07)", () => {
     expect(schema.$schema).toBe("http://json-schema.org/draft-07/schema#");
-    const ajv = new Ajv();
-    addFormats(ajv);
+    const ajv = createAjv();
     const valid = ajv.validateSchema(schema);
     expect(valid).toBe(true);
   });
@@ -51,8 +40,7 @@ describe("shared/schema.json", () => {
   it("rejects a response with non-string custom value", () => {
     const validate = createValidator();
     const result = validate({
-      sha: "a1b2c3d",
-      branch: "main",
+      ...BASE_PAYLOAD,
       custom: { count: 42 },
     });
     expect(result).toBe(false);
@@ -62,22 +50,19 @@ describe("shared/schema.json", () => {
     const validate = createValidator();
 
     const validInt = validate({
-      sha: "a1b2c3d",
-      branch: "main",
+      ...BASE_PAYLOAD,
       _buildbanner: { version: 1 },
     });
     expect(validInt).toBe(true);
 
     const invalidFloat = validate({
-      sha: "a1b2c3d",
-      branch: "main",
+      ...BASE_PAYLOAD,
       _buildbanner: { version: 1.5 },
     });
     expect(invalidFloat).toBe(false);
 
     const invalidString = validate({
-      sha: "a1b2c3d",
-      branch: "main",
+      ...BASE_PAYLOAD,
       _buildbanner: { version: "1" },
     });
     expect(invalidString).toBe(false);
@@ -87,22 +72,19 @@ describe("shared/schema.json", () => {
     const validate = createValidator();
 
     const validInt = validate({
-      sha: "a1b2c3d",
-      branch: "main",
+      ...BASE_PAYLOAD,
       port: 8001,
     });
     expect(validInt).toBe(true);
 
     const invalidString = validate({
-      sha: "a1b2c3d",
-      branch: "main",
+      ...BASE_PAYLOAD,
       port: "8001",
     });
     expect(invalidString).toBe(false);
 
     const invalidFloat = validate({
-      sha: "a1b2c3d",
-      branch: "main",
+      ...BASE_PAYLOAD,
       port: 80.5,
     });
     expect(invalidFloat).toBe(false);
@@ -148,6 +130,7 @@ describe("shared/test_fixtures.json", () => {
   it("env_var_mapping has all expected env vars", () => {
     const mapping = fixtures.env_var_mapping;
     expect(mapping).toHaveProperty("BUILDBANNER_SHA");
+    expect(mapping).toHaveProperty("BUILDBANNER_SHA_FULL");
     expect(mapping).toHaveProperty("BUILDBANNER_BRANCH");
     expect(mapping).toHaveProperty("BUILDBANNER_REPO_URL");
     expect(mapping).toHaveProperty("BUILDBANNER_COMMIT_DATE");
@@ -156,6 +139,34 @@ describe("shared/test_fixtures.json", () => {
     expect(mapping).toHaveProperty("BUILDBANNER_ENVIRONMENT");
     expect(mapping).toHaveProperty("BUILDBANNER_PORT");
     expect(mapping).toHaveProperty("BUILDBANNER_CUSTOM_*");
-    expect(mapping).toHaveProperty("BUILDBANNER_TOKEN");
+  });
+
+  it("env_var_mapping entries have consistent structure", () => {
+    const mapping = fixtures.env_var_mapping;
+    for (const [envVar, entry] of Object.entries(mapping)) {
+      expect(entry).toHaveProperty("field");
+      expect(typeof entry.field).toBe("string");
+      expect(entry).toHaveProperty("description");
+      expect(typeof entry.description).toBe("string");
+      expect(entry).not.toHaveProperty(
+        "fields",
+        `${envVar} uses plural "fields" — normalize to singular "field"`,
+      );
+    }
+  });
+
+  it("env_var_mapping field references exist in schema properties", () => {
+    const mapping = fixtures.env_var_mapping;
+    const schemaProps = Object.keys(schema.properties);
+
+    for (const [envVar, entry] of Object.entries(mapping)) {
+      const field = entry.field;
+      // custom.* is a wildcard pattern for custom sub-keys — skip exact match
+      if (field.startsWith("custom.")) {
+        expect(schemaProps).toContain("custom");
+        continue;
+      }
+      expect(schemaProps).toContain(field);
+    }
   });
 });
