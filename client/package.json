@@ -1,0 +1,6 @@
+{
+  "name": "buildbanner",
+  "version": "0.1.0",
+  "main": "buildbanner.js",
+  "description": "Crash-proof, language-agnostic developer info banner for web apps"
+}
