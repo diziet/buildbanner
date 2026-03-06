@@ -572,7 +572,7 @@ Content-Security-Policy: script-src 'self' https://unpkg.com;
 
 The `/buildbanner.json` endpoint exposes git metadata (SHA, branch, repo URL) that may be sensitive on public-facing environments. BuildBanner provides multiple layers of defense:
 
-1. **`data-env-hide`** — auto-hides the banner (and skips the fetch entirely) for specified environments. Set `data-env-hide="production,staging"` to prevent the client from ever requesting the endpoint in those environments.
+1. **`data-env-hide`** — auto-hides the banner for specified environments. Set `data-env-hide="production,staging"` to suppress rendering when the response's `environment` field matches. **Note:** the client must still perform the fetch to learn the environment value. `data-env-hide` suppresses rendering, not the network request.
 2. **`data-token`** — sends a Bearer token on fetch. Server helpers can validate this token and return 401 for unauthorized requests. **This is a speed bump, not a security boundary.** See **Token Auth** above for full details and limitations.
 3. **Same-origin by default** — the client fetches from the same origin. No CORS headers are set by server helpers, so cross-origin requests fail silently.
 4. **Remove the script tag** — the simplest production defense. If `<script src="buildbanner.min.js">` is not in your production HTML, there is zero client-side footprint.
