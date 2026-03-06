@@ -1,17 +1,19 @@
 /** Build output validation tests for BuildBanner client. */
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
-import { gzipSync } from "node:zlib";
 import { execSync } from "node:child_process";
 import { resolve } from "node:path";
+import { createRequire } from "node:module";
 
-const DIST_DIR = resolve(__dirname, "..", "dist");
+const require = createRequire(import.meta.url);
+const { BUDGET_BYTES, getGzippedSize } = require("../scripts/size-budget.js");
+
+const DIST_DIR = resolve(import.meta.dirname, "..", "dist");
 const MIN_PATH = resolve(DIST_DIR, "buildbanner.min.js");
-const SRC_PATH = resolve(__dirname, "..", "buildbanner.js");
-const BUDGET_BYTES = 3072;
+const SRC_PATH = resolve(import.meta.dirname, "..", "buildbanner.js");
 
 beforeAll(() => {
-  execSync("npm run build", { cwd: resolve(__dirname, "..") });
+  execSync("npm run build", { cwd: resolve(import.meta.dirname, "..") });
 });
 
 describe("build output", () => {
@@ -24,10 +26,9 @@ describe("build output", () => {
     expect(() => new Function(code)).not.toThrow();
   });
 
-  it("gzipped size is under 3072 bytes", () => {
-    const source = readFileSync(MIN_PATH);
-    const gzipped = gzipSync(source);
-    expect(gzipped.byteLength).toBeLessThan(BUDGET_BYTES);
+  it("gzipped size is within budget", () => {
+    const size = getGzippedSize(MIN_PATH);
+    expect(size).toBeLessThanOrEqual(BUDGET_BYTES);
   });
 
   it("output is IIFE (contains no import/export statements)", () => {
