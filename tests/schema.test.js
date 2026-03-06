@@ -20,10 +20,10 @@ function assertIntegerOnly(buildPayload, validValue) {
   expect(validate({ ...BASE_PAYLOAD, ...buildPayload(String(validValue)) })).toBe(false);
 }
 
-/** Assert a fixture array is non-empty and every entry has the required keys. */
-function assertFixtureArray(array, requiredKeys) {
+/** Assert a fixture array has the expected length and every entry has the required keys. */
+function assertFixtureArray(array, expectedLength, requiredKeys) {
   expect(Array.isArray(array)).toBe(true);
-  expect(array.length).toBeGreaterThan(0);
+  expect(array.length).toBe(expectedLength);
   for (const entry of array) {
     for (const key of requiredKeys) {
       expect(entry).toHaveProperty(key);
@@ -83,15 +83,15 @@ describe("shared/test_fixtures.json", () => {
   });
 
   it("url_sanitization entries have expected structure", () => {
-    assertFixtureArray(fixtures.url_sanitization, ["input", "expected"]);
+    assertFixtureArray(fixtures.url_sanitization, 13, ["input", "expected"]);
   });
 
   it("branch_detection entries have expected structure", () => {
-    assertFixtureArray(fixtures.branch_detection, ["input", "tag", "expected"]);
+    assertFixtureArray(fixtures.branch_detection, 4, ["input", "tag", "expected"]);
   });
 
   it("valid_responses entries have expected structure", () => {
-    assertFixtureArray(fixtures.valid_responses, ["description", "payload"]);
+    assertFixtureArray(fixtures.valid_responses, 3, ["description", "payload"]);
   });
 
   it("env_var_mapping has all expected env vars", () => {
