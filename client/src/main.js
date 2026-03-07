@@ -3,12 +3,12 @@
 import { parseConfig, resolveConfig } from "./config.js";
 import { createLogger } from "./logger.js";
 import { fetchBannerData } from "./fetch.js";
-import { createBannerHost, destroyBannerHost } from "./dom.js";
+import { createBannerHost, destroyBannerHost, DEFAULT_HEIGHT } from "./dom.js";
 import { renderSegments } from "./segments.js";
 import { checkTokenWarnings } from "./token-warnings.js";
 import { isDismissed, createDismissButton, resetDismiss } from "./dismiss.js";
 import { startPolling, stopPolling } from "./polling.js";
-import { applyPush, removePush } from "./push.js";
+import { applyPush, removePush, resolvePositionMode } from "./push.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
@@ -73,9 +73,9 @@ async function init(opts = {}) {
       return;
     }
 
-    const bannerHeight = parseInt(config.height, 10) || 28;
+    const bannerHeight = parseInt(config.height, 10) || DEFAULT_HEIGHT;
     const pushState = applyPush(config, bannerHeight, logger);
-    const positionMode = pushState.mode === "push" ? "sticky" : "fixed";
+    const positionMode = resolvePositionMode(pushState.mode);
 
     const result = createBannerHost(config, positionMode);
     if (!result) {

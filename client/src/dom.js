@@ -3,8 +3,9 @@
 import { createLogger } from "./logger.js";
 
 const FONT_STACK = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace';
-const DEFAULT_HEIGHT = 28;
+export const DEFAULT_HEIGHT = 28;
 const DEFAULT_Z_INDEX = 999999;
+const VALID_POSITION_MODES = ["sticky", "fixed"];
 
 /** Resolve and validate height/zIndex as safe integers. */
 function _resolveStyleValues(config) {
@@ -15,12 +16,13 @@ function _resolveStyleValues(config) {
 
 /** Build shared CSS properties for the banner wrapper. */
 function _buildWrapperCssProperties(height, zIndex, positionMode = "sticky") {
+  const safePosition = VALID_POSITION_MODES.includes(positionMode) ? positionMode : "sticky";
   return `
       all: initial;
       display: flex;
       align-items: center;
       gap: 0;
-      position: ${positionMode};
+      position: ${safePosition};
       top: 0;
       z-index: ${zIndex};
       height: ${height}px;
@@ -111,7 +113,9 @@ function _applyCommonAttributes(host, wrapper) {
 
 /**
  * Create the banner host element with Shadow DOM (or fallback).
- * Returns { host, shadowRoot, wrapper, fallbackStyle }.
+ * @param {object} config - Banner configuration.
+ * @param {"sticky"|"fixed"} positionMode - CSS position for the wrapper ("sticky" for push, "fixed" for overlay).
+ * @returns {{ host: Element, shadowRoot: ShadowRoot|null, wrapper: Element, fallbackStyle: Element|null }|null}
  */
 export function createBannerHost(config = {}, positionMode = "sticky") {
   const logger = createLogger(config.debug);

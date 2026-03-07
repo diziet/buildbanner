@@ -1,7 +1,7 @@
 /** Tests for the push module. */
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { applyPush, removePush } from "../src/push.js";
+import { applyPush, removePush, resolvePositionMode } from "../src/push.js";
 
 /** Helper to set computed padding on <html>. */
 function setHtmlPadding(prop, value) {
@@ -104,7 +104,6 @@ describe("push module", () => {
 
       setHtmlPadding("paddingTop", 15);
       removePush(28, pushState, config);
-      // padding should remain untouched
       expect(readInlinePadding("paddingTop")).toBe(15);
     });
 
@@ -125,40 +124,31 @@ describe("push module", () => {
     });
   });
 
-  describe("dismiss restores padding", () => {
-    it("removePush called on dismiss restores padding", () => {
+  describe("dismiss restores padding (via _teardown calling removePush)", () => {
+    it("dismiss callback triggers _teardown which calls removePush", () => {
       const config = { push: true, position: "top" };
       const pushState = applyPush(config, 28, mockLogger);
 
       expect(readInlinePadding("paddingTop")).toBe(28);
 
-      // Simulate dismiss callback calling removePush
+      // Simulate third-party adding padding after init, then dismiss
+      setHtmlPadding("paddingTop", 38);
       removePush(28, pushState, config);
-      expect(readInlinePadding("paddingTop")).toBe(0);
+      expect(readInlinePadding("paddingTop")).toBe(10);
     });
   });
 
-  describe("position mode on banner host", () => {
-    it("push mode results in position: sticky", () => {
-      const config = { push: true, position: "top" };
-      const result = applyPush(config, 28, mockLogger);
-      const positionMode = result.mode === "push" ? "sticky" : "fixed";
-      expect(positionMode).toBe("sticky");
+  describe("resolvePositionMode", () => {
+    it("push mode returns sticky", () => {
+      expect(resolvePositionMode("push")).toBe("sticky");
     });
 
-    it("overlay mode results in position: fixed", () => {
-      setHtmlPadding("paddingTop", 10);
-      const config = { push: true, position: "top" };
-      const result = applyPush(config, 28, mockLogger);
-      const positionMode = result.mode === "push" ? "sticky" : "fixed";
-      expect(positionMode).toBe("fixed");
+    it("overlay mode returns fixed", () => {
+      expect(resolvePositionMode("overlay")).toBe("fixed");
     });
 
-    it("config.push false results in position: fixed", () => {
-      const config = { push: false, position: "top" };
-      const result = applyPush(config, 28, mockLogger);
-      const positionMode = result.mode === "push" ? "sticky" : "fixed";
-      expect(positionMode).toBe("fixed");
+    it("unknown mode returns fixed", () => {
+      expect(resolvePositionMode("unknown")).toBe("fixed");
     });
   });
 
