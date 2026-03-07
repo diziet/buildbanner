@@ -1,8 +1,7 @@
 /** DOM module — creates and destroys the banner host element. */
 
 import { createLogger } from "./logger.js";
-
-const FONT_STACK = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace';
+import { getThemeStyles, FONT_FAMILY, FONT_SIZE, DARK_BG, DARK_FG } from "./theme.js";
 export const DEFAULT_HEIGHT = 28;
 const DEFAULT_Z_INDEX = 999999;
 const VALID_POSITION_MODES = ["sticky", "fixed"];
@@ -29,11 +28,11 @@ function _buildWrapperCssProperties(height, zIndex, positionMode = "sticky") {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-family: ${FONT_STACK};
-      font-size: 12px;
+      font-family: ${FONT_FAMILY};
+      font-size: ${FONT_SIZE};
       line-height: ${height}px;
-      color: #e0e0e0;
-      background: #1a1a1a;
+      color: var(--bb-fg, ${DARK_FG});
+      background: var(--bb-bg, ${DARK_BG});
       padding: 0 8px;
       box-sizing: border-box;`;
 }
@@ -42,7 +41,7 @@ function _buildWrapperCssProperties(height, zIndex, positionMode = "sticky") {
 function _buildAnchorCss(parentSelector) {
   return `
     ${parentSelector} a {
-      color: inherit;
+      color: var(--bb-link);
       text-decoration: none;
     }
     ${parentSelector} a:hover {
@@ -53,8 +52,9 @@ function _buildAnchorCss(parentSelector) {
 /** Generate shadow DOM stylesheet for the banner. */
 function _buildStyles(config, positionMode) {
   const { height, zIndex } = _resolveStyleValues(config);
+  const theme = config.theme || "dark";
 
-  return `
+  return `${getThemeStyles(theme)}
     .bb-wrapper {${_buildWrapperCssProperties(height, zIndex, positionMode)}
     }
     .bb-clickable {
