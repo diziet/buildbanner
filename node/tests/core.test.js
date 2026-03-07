@@ -18,6 +18,7 @@ const FAKE_SHA_SHORT = 'a1b2c3d';
 const FAKE_COMMIT_DATE = '2026-02-13T14:25:00+00:00';
 const FAKE_BRANCH = 'main';
 const FAKE_REMOTE = 'https://github.com/org/repo.git';
+const FAKE_TOKEN = 'abcdefghijklmnop';
 
 function makeGitLogOutput() {
   return `${FAKE_SHA_FULL} ${FAKE_SHA_SHORT} ${FAKE_COMMIT_DATE}`;
@@ -51,7 +52,7 @@ function mockGitFail() {
   });
 }
 
-const savedBuildbannerEnv = {};
+let savedBuildbannerEnv = {};
 
 /** Clear BUILDBANNER_ env vars and set overrides. */
 function setEnv(overrides = {}) {
@@ -75,6 +76,7 @@ function restoreEnv() {
   for (const [key, value] of Object.entries(savedBuildbannerEnv)) {
     process.env[key] = value;
   }
+  savedBuildbannerEnv = {};
 }
 
 beforeEach(() => {
@@ -135,6 +137,14 @@ describe('core — env var overrides', () => {
     expect(data.commit_date).toBe('2026-03-01T00:00:00Z');
   });
 
+  it('short env SHA (<40 chars) does not set sha_full', () => {
+    mockGitFail();
+    setEnv({ BUILDBANNER_SHA: 'aabbccddee112233' });
+    const data = createBanner().getBannerData();
+    expect(data.sha).toBe('aabbccd');
+    expect(data).not.toHaveProperty('sha_full');
+  });
+
   it('BUILDBANNER_APP_NAME maps to app_name', () => {
     mockGit();
     setEnv({ BUILDBANNER_APP_NAME: 'my-app' });
@@ -155,6 +165,13 @@ describe('core — env var overrides', () => {
     const data = createBanner().getBannerData();
     expect(data.port).toBe(3000);
     expect(typeof data.port).toBe('number');
+  });
+
+  it('non-numeric BUILDBANNER_PORT is treated as null', () => {
+    mockGit();
+    setEnv({ BUILDBANNER_PORT: 'abc' });
+    const data = createBanner().getBannerData();
+    expect(data).not.toHaveProperty('port');
   });
 });
 
@@ -264,7 +281,7 @@ describe('core — git fallback', () => {
   it('git not available — falls back to env vars', () => {
     mockGitFail();
     setEnv({
-      BUILDBANNER_SHA: 'aabbccddee112233',
+      BUILDBANNER_SHA: 'aabbccddee112233aabbccddee112233aabbccdd',
       BUILDBANNER_BRANCH: 'env-only',
     });
     const data = createBanner().getBannerData();
@@ -283,25 +300,19 @@ describe('core — git fallback', () => {
 describe('core — token auth', () => {
   it('valid token passes', () => {
     mockGit();
-    const { checkAuth } = createBanner({
-      token: 'abcdefghijklmnop',
-    });
-    expect(checkAuth('Bearer abcdefghijklmnop').authorized).toBe(true);
+    const { checkAuth } = createBanner({ token: FAKE_TOKEN });
+    expect(checkAuth(`Bearer ${FAKE_TOKEN}`).authorized).toBe(true);
   });
 
   it('invalid token is rejected', () => {
     mockGit();
-    const { checkAuth } = createBanner({
-      token: 'abcdefghijklmnop',
-    });
+    const { checkAuth } = createBanner({ token: FAKE_TOKEN });
     expect(checkAuth('Bearer wrong-token-here').authorized).toBe(false);
   });
 
   it('missing header is rejected', () => {
     mockGit();
-    const { checkAuth } = createBanner({
-      token: 'abcdefghijklmnop',
-    });
+    const { checkAuth } = createBanner({ token: FAKE_TOKEN });
     expect(checkAuth(null).authorized).toBe(false);
   });
 
@@ -328,7 +339,7 @@ describe('core — token auth', () => {
     mockGit();
     setEnv({ BUILDBANNER_ENVIRONMENT: 'production' });
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    createBanner({ token: 'abcdefghijklmnop' });
+    createBanner({ token: FAKE_TOKEN });
 
     expect(warnSpy).toHaveBeenCalledWith(
       'BuildBanner: token auth is enabled in production environment'
@@ -352,6 +363,13 @@ describe('core — token auth', () => {
     });
     expect(checkAuth('Bearer prog-token-16chars').authorized).toBe(true);
     expect(checkAuth('Bearer env-token-16chars!').authorized).toBe(false);
+  });
+
+  it('empty string token disables auth (does not fall to env)', () => {
+    mockGit();
+    setEnv({ BUILDBANNER_TOKEN: 'env-token-16chars!' });
+    const { checkAuth } = createBanner({ token: '' });
+    expect(checkAuth(null).authorized).toBe(true);
   });
 });
 

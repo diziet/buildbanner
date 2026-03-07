@@ -2,8 +2,10 @@
 'use strict';
 
 const childProcess = require('child_process');
+const crypto = require('crypto');
 
 const SHORT_SHA_LEN = 7;
+const FULL_SHA_LEN = 40;
 const MIN_TOKEN_LEN = 16;
 
 // Mutable reference for testing — tests can replace _exec to mock git calls.
@@ -42,7 +44,8 @@ function _readGitInfo() {
   if (logLine) {
     const parts = logLine.split(' ');
     shaFull = parts[0] || null;
-    sha = parts[1] || null;
+    // Derive short SHA deterministically — git %h length varies by repo
+    sha = shaFull ? shaFull.slice(0, SHORT_SHA_LEN) : null;
     commitDate = parts[2] || null;
   }
 
@@ -89,6 +92,14 @@ function _sanitizeUrl(raw) {
   return url;
 }
 
+/** Merge source entries into target, stringifying values and omitting nulls. */
+function _mergeCustomFields(target, source) {
+  for (const [key, value] of Object.entries(source)) {
+    if (value == null) continue;
+    target[key] = String(value);
+  }
+}
+
 /** Read custom fields from BUILDBANNER_CUSTOM_* env vars. */
 function _readCustomEnv() {
   const custom = {};
@@ -114,7 +125,7 @@ function _applyEnvOverrides(gitInfo) {
   if (process.env.BUILDBANNER_SHA) {
     const envSha = process.env.BUILDBANNER_SHA;
     info.sha = envSha.slice(0, SHORT_SHA_LEN);
-    if (envSha.length >= 8) {
+    if (envSha.length >= FULL_SHA_LEN) {
       info.shaFull = envSha;
     }
   }
@@ -132,6 +143,16 @@ function _applyEnvOverrides(gitInfo) {
   }
 
   return info;
+}
+
+/** Constant-time string comparison to prevent timing attacks. */
+function _safeCompare(a, b) {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 /**
@@ -153,12 +174,13 @@ function createBanner(options = {}) {
   const appName = process.env.BUILDBANNER_APP_NAME || null;
   const environment = process.env.BUILDBANNER_ENVIRONMENT || null;
   const portStr = process.env.BUILDBANNER_PORT;
-  const port = portStr ? parseInt(portStr, 10) : null;
+  const portParsed = portStr ? parseInt(portStr, 10) : null;
+  const port = Number.isNaN(portParsed) ? null : portParsed;
 
   let extrasErrorLogged = false;
 
-  // Token: programmatic wins over env var
-  const token = options.token || process.env.BUILDBANNER_TOKEN || null;
+  // Token: programmatic wins over env var (nullish coalescing)
+  const token = options.token ?? process.env.BUILDBANNER_TOKEN ?? null;
   let authEnabled = false;
 
   if (token) {
@@ -201,10 +223,7 @@ function createBanner(options = {}) {
           for (const [key, value] of Object.entries(extras)) {
             if (key === 'custom' && value && typeof value === 'object') {
               custom = custom || {};
-              for (const [ck, cv] of Object.entries(value)) {
-                if (cv == null) continue;
-                custom[ck] = String(cv);
-              }
+              _mergeCustomFields(custom, value);
             } else if (key !== '_buildbanner') {
               data[key] = value;
             }
@@ -221,13 +240,8 @@ function createBanner(options = {}) {
     }
 
     if (custom) {
-      const processed = {};
-      for (const [key, value] of Object.entries(custom)) {
-        if (value == null) continue;
-        processed[key] = String(value);
-      }
-      if (Object.keys(processed).length > 0) {
-        data.custom = processed;
+      if (Object.keys(custom).length > 0) {
+        data.custom = custom;
       }
     }
 
@@ -252,7 +266,7 @@ function createBanner(options = {}) {
     }
 
     const provided = authHeader.slice('Bearer '.length);
-    return { authorized: provided === token };
+    return { authorized: _safeCompare(provided, token) };
   }
 
   return { getBannerData, checkAuth };
