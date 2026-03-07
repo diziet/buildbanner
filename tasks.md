@@ -303,3 +303,9 @@ Create `client/src/time.js` exporting `formatUptime(serverStartedISO)`, `formatD
 ## Task 39: Rename logger parameter to match spec
 
 In `client/src/logger.js`, rename the `createLogger` parameter from `warnEnabled` to `debugEnabled` to match the Task 5 spec. Update all call sites and tests accordingly.
+
+---
+
+## Task 40: Fix install instructions to use GitHub-based installs
+
+The docs currently say `npm install buildbanner`, `pip install buildbanner`, and `gem install buildbanner` as if the packages are published to registries. They are not. Update all install instructions across `docs/README.md`, `python/README.md`, `ruby/README.md`, and any other docs to use GitHub-based installation instead. For npm: `npm install github:diziet/buildbanner`. For pip: `pip install git+https://github.com/diziet/buildbanner.git#subdirectory=python`. For Ruby: point to the GitHub repo in the Gemfile. Update any code examples or quick-start sections accordingly.
