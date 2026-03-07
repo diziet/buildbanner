@@ -57,6 +57,20 @@ function _buildStyles(config) {
     }
     .bb-clickable {
       cursor: pointer;
+    }
+    .bb-dismiss {
+      all: unset;
+      cursor: pointer;
+      margin-left: auto;
+      padding: 0 4px;
+      color: inherit;
+      font-size: 14px;
+      line-height: inherit;
+    }
+    .bb-dismiss:focus-visible {
+      outline: 2px solid #4da6ff;
+      outline-offset: 2px;
+      border-radius: 2px;
     }${_buildAnchorCss(".bb-wrapper")}
   `;
 }
