@@ -38,3 +38,4 @@ coverage/
 htmlcov/
 
 # Package locks (managed per-package)
+test-results/

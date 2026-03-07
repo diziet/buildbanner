@@ -9,6 +9,7 @@
     "test": "vitest run tests/"
   },
   "devDependencies": {
+    "@playwright/test": "1.52.0",
     "ajv": "8.18.0",
     "ajv-formats": "3.0.1",
     "vitest": "3.0.7"
