@@ -2,9 +2,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { formatUptime, formatDeployAge, startUptimeTicker } from "../src/time.js";
 
+beforeEach(() => { vi.useFakeTimers(); });
+afterEach(() => { vi.useRealTimers(); });
+
 describe("formatUptime", () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
 
   it("returns null for null server_started", () => {
     expect(formatUptime(null)).toBeNull();
@@ -47,8 +48,6 @@ describe("formatUptime", () => {
 });
 
 describe("formatDeployAge", () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
 
   it("returns null for null deployed_at", () => {
     expect(formatDeployAge(null)).toBeNull();
@@ -66,8 +65,6 @@ describe("formatDeployAge", () => {
 });
 
 describe("both present", () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
 
   it("returns both strings when both timestamps are present", () => {
     const now = new Date("2026-03-07T15:00:00Z");
@@ -80,8 +77,6 @@ describe("both present", () => {
 });
 
 describe("startUptimeTicker", () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
 
   it("updates element text after 60 seconds", () => {
     vi.setSystemTime(new Date("2026-03-07T12:00:00Z"));
@@ -115,5 +110,11 @@ describe("startUptimeTicker", () => {
   it("returns null when serverStartedISO is null", () => {
     const element = { textContent: "" };
     expect(startUptimeTicker(element, null)).toBeNull();
+  });
+
+  it("returns null for invalid ISO string without leaking interval", () => {
+    const element = { textContent: "" };
+    expect(startUptimeTicker(element, "not-a-date")).toBeNull();
+    expect(element.textContent).toBe("");
   });
 });

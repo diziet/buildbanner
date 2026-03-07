@@ -26,27 +26,35 @@ function _formatElapsed(totalSeconds) {
   return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
 }
 
+/** Compute elapsed seconds from an ISO 8601 timestamp to now. Returns null on invalid input. */
+function _elapsedSeconds(isoString) {
+  if (isoString == null) return null;
+  const ms = new Date(isoString).getTime();
+  if (Number.isNaN(ms)) return null;
+  return (Date.now() - ms) / 1000;
+}
+
+/** Format an ISO timestamp as a prefixed/suffixed elapsed-time string. */
+function _formatTimestamp(isoString, prefix, suffix = "") {
+  const elapsed = _elapsedSeconds(isoString);
+  if (elapsed === null) return null;
+  return `${prefix}${_formatElapsed(elapsed)}${suffix}`;
+}
+
 /** Compute uptime string from server_started ISO timestamp. Returns null if input is null/undefined. */
 export function formatUptime(serverStartedISO) {
-  if (serverStartedISO == null) return null;
-  const startMs = new Date(serverStartedISO).getTime();
-  if (Number.isNaN(startMs)) return null;
-  const elapsedSeconds = (Date.now() - startMs) / 1000;
-  return `up ${_formatElapsed(elapsedSeconds)}`;
+  return _formatTimestamp(serverStartedISO, "up ");
 }
 
 /** Compute deploy age string from deployed_at ISO timestamp. Returns null if input is null/undefined. */
 export function formatDeployAge(deployedAtISO) {
-  if (deployedAtISO == null) return null;
-  const deployMs = new Date(deployedAtISO).getTime();
-  if (Number.isNaN(deployMs)) return null;
-  const elapsedSeconds = (Date.now() - deployMs) / 1000;
-  return `deployed ${_formatElapsed(elapsedSeconds)} ago`;
+  return _formatTimestamp(deployedAtISO, "deployed ", " ago");
 }
 
 /** Start a ticker that updates element.textContent with uptime every 60s. Returns timer ID. */
 export function startUptimeTicker(element, serverStartedISO) {
   if (element == null || serverStartedISO == null) return null;
+  if (_elapsedSeconds(serverStartedISO) === null) return null;
   element.textContent = formatUptime(serverStartedISO);
   return setInterval(() => {
     element.textContent = formatUptime(serverStartedISO);
