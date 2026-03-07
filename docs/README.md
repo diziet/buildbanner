@@ -29,10 +29,10 @@ Or self-host the script:
 <script src="/static/buildbanner.min.js"></script>
 ```
 
-Or install via npm:
+Or install via npm (from GitHub):
 
 ```bash
-npm install buildbanner
+npm install github:diziet/buildbanner
 ```
 
 ```js
@@ -124,7 +124,7 @@ buildbanner_blueprint(extras=lambda: {
 })
 ```
 
-Package: `pip install buildbanner`
+Package: `pip install git+https://github.com/diziet/buildbanner.git#subdirectory=python`
 
 ### FastAPI
 
@@ -133,7 +133,7 @@ from buildbanner import BuildBannerMiddleware
 app.add_middleware(BuildBannerMiddleware)
 ```
 
-Package: `pip install buildbanner`
+Package: `pip install git+https://github.com/diziet/buildbanner.git#subdirectory=python`
 
 ### Django
 
@@ -142,7 +142,7 @@ Package: `pip install buildbanner`
 MIDDLEWARE = ['buildbanner.django.BuildBannerMiddleware']
 ```
 
-Package: `pip install buildbanner`
+Package: `pip install git+https://github.com/diziet/buildbanner.git#subdirectory=python`
 
 ### WSGI (generic)
 
@@ -151,7 +151,7 @@ from buildbanner import buildbanner_wsgi
 app = buildbanner_wsgi(app)
 ```
 
-Package: `pip install buildbanner`
+Package: `pip install git+https://github.com/diziet/buildbanner.git#subdirectory=python`
 
 ### Express
 
@@ -169,7 +169,7 @@ app.use(buildBannerMiddleware({
 }));
 ```
 
-Package: `npm install buildbanner`
+Package: `npm install github:diziet/buildbanner`
 
 ### Koa
 
@@ -178,7 +178,7 @@ const { buildBannerKoa } = require('buildbanner');
 app.use(buildBannerKoa());
 ```
 
-Package: `npm install buildbanner`
+Package: `npm install github:diziet/buildbanner`
 
 ### Hono
 
@@ -187,13 +187,13 @@ const { buildBannerHono } = require('buildbanner');
 app.use(buildBannerHono());
 ```
 
-Package: `npm install buildbanner`
+Package: `npm install github:diziet/buildbanner`
 
 ### Rack / Rails
 
 ```ruby
 # Gemfile
-gem 'buildbanner'
+gem 'buildbanner', github: 'diziet/buildbanner', glob: 'ruby/*.gemspec'
 
 # Rails — config/application.rb
 config.middleware.use BuildBanner::Middleware
@@ -207,7 +207,7 @@ config.middleware.use BuildBanner::Middleware,
   }
 ```
 
-Package: `gem install buildbanner`
+Package: add `gem "buildbanner", github: "diziet/buildbanner", glob: "ruby/*.gemspec"` to your Gemfile
 
 ### Static / nginx
 

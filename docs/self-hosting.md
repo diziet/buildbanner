@@ -4,10 +4,10 @@ Serve `buildbanner.min.js` from your own infrastructure instead of a CDN for ful
 
 ## Getting the File
 
-### From npm
+### From npm (via GitHub)
 
 ```bash
-npm install buildbanner
+npm install github:diziet/buildbanner
 cp node_modules/buildbanner/dist/buildbanner.min.js /path/to/your/static/
 ```
 

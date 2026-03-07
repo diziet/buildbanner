@@ -7,19 +7,13 @@ Rack middleware that serves a `/buildbanner.json` endpoint with git info, deploy
 Add to your Gemfile:
 
 ```ruby
-gem "buildbanner"
+gem "buildbanner", github: "diziet/buildbanner", glob: "ruby/*.gemspec"
 ```
 
 Then run:
 
 ```bash
 bundle install
-```
-
-Or install directly:
-
-```bash
-gem install buildbanner
 ```
 
 ## Usage

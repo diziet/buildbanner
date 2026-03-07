@@ -5,7 +5,7 @@ Drop-in server helpers that serve a `/buildbanner.json` endpoint with git info, 
 ## Installation
 
 ```bash
-pip install buildbanner
+pip install git+https://github.com/diziet/buildbanner.git#subdirectory=python
 ```
 
 ## Usage
