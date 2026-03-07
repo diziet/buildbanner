@@ -110,27 +110,38 @@ function _createMaybeLinkedSegment(segmentName, text, linkUrl) {
     : _createSpan(segmentName, text);
 }
 
-/** Build the ARIA live region container for status segments. */
-function _buildLiveRegion() {
+/** Check if status value changed from previous, updating tracker. */
+function _hasStatusChanged(field, newStatus, previousStatuses) {
+  const current = newStatus && newStatus.status ? newStatus.status : null;
+  const isFirstTrack = !(field in previousStatuses);
+  const prev = previousStatuses[field];
+  previousStatuses[field] = current;
+  if (isFirstTrack) return true;
+  return prev !== current;
+}
+
+/** Build the status container div, with ARIA live attrs only when isLive is true. */
+function _buildStatusContainer(testsSegment, buildSegment, isLive) {
   const container = document.createElement("div");
-  container.setAttribute("role", "status");
-  container.setAttribute("aria-live", "polite");
+  container.className = "bb-live-region";
   container.setAttribute("data-bb-live-region", "");
-  container.style.display = "contents";
+  if (isLive) {
+    container.setAttribute("role", "status");
+    container.setAttribute("aria-live", "polite");
+  }
+  let isFirst = true;
+  if (testsSegment) {
+    _appendSegment(container, testsSegment, isFirst);
+    isFirst = false;
+  }
+  if (buildSegment) {
+    _appendSegment(container, buildSegment, isFirst);
+  }
   return container;
 }
 
-/** Check if status value changed from previous, updating tracker. */
-function _hasStatusChanged(field, newStatus, previousStatuses) {
-  const prev = previousStatuses[field];
-  const current = newStatus && newStatus.status ? newStatus.status : null;
-  if (prev === current) return false;
-  previousStatuses[field] = current;
-  return true;
-}
-
 /** Render all segments into the wrapper in canonical order. Returns { tickerTimerId }. */
-export function renderSegments(data, wrapper, config = {}, previousStatuses = null) {
+export function renderSegments(data, wrapper, config = {}, previousStatuses = {}) {
   const segments = [];
   let tickerTimerId = null;
   const hostPatterns = config.hostPatterns || [];
@@ -187,38 +198,10 @@ export function renderSegments(data, wrapper, config = {}, previousStatuses = nu
   const hasStatusSegments = testsSegment || buildSegment;
 
   if (hasStatusSegments) {
-    const tracker = previousStatuses || {};
-    const testsChanged = _hasStatusChanged("tests", data.tests, tracker);
-    const buildChanged = _hasStatusChanged("build", data.build, tracker);
-    const isFirstRender = previousStatuses === null;
-    const shouldUpdateLive = isFirstRender || testsChanged || buildChanged;
-
-    if (shouldUpdateLive) {
-      const liveRegion = _buildLiveRegion();
-      let isFirstInRegion = true;
-      if (testsSegment) {
-        _appendSegment(liveRegion, testsSegment, isFirstInRegion);
-        isFirstInRegion = false;
-      }
-      if (buildSegment) {
-        _appendSegment(liveRegion, buildSegment, isFirstInRegion);
-      }
-      segments.push(liveRegion);
-    } else {
-      // Status unchanged — re-render segments without live region announcement
-      const container = document.createElement("div");
-      container.style.display = "contents";
-      container.setAttribute("data-bb-live-region", "");
-      let isFirstInRegion = true;
-      if (testsSegment) {
-        _appendSegment(container, testsSegment, isFirstInRegion);
-        isFirstInRegion = false;
-      }
-      if (buildSegment) {
-        _appendSegment(container, buildSegment, isFirstInRegion);
-      }
-      segments.push(container);
-    }
+    const testsChanged = _hasStatusChanged("tests", data.tests, previousStatuses);
+    const buildChanged = _hasStatusChanged("build", data.build, previousStatuses);
+    const isLive = testsChanged || buildChanged;
+    segments.push(_buildStatusContainer(testsSegment, buildSegment, isLive));
   }
 
   // 8. port

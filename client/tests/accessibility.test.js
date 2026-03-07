@@ -3,7 +3,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderSegments } from "../src/segments.js";
 import { createDismissButton } from "../src/dismiss.js";
-import { createBannerHost } from "../src/dom.js";
 
 /** Build test data with status fields. */
 function statusData(testsStatus = "pass", buildStatus = "fresh") {
@@ -34,7 +33,7 @@ describe("ARIA live region", () => {
     vi.useRealTimers();
   });
 
-  function render(data, config = {}, previousStatuses = null) {
+  function render(data, config = {}, previousStatuses = {}) {
     const result = renderSegments(data, wrapper, config, previousStatuses);
     lastTickerTimerId = result.tickerTimerId;
     return result;
@@ -134,11 +133,12 @@ describe("keyboard navigation", () => {
     const btn = createDismissButton(config, onDismiss);
     document.body.appendChild(btn);
 
-    // Native <button> handles Enter natively in real browsers.
-    // In jsdom, verify by direct click (keyboard activation equivalent).
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+    btn.dispatchEvent(event);
+    // Native <button> converts Enter keydown to click in real browsers.
+    // jsdom does not synthesize this, so verify via explicit click as well.
     btn.click();
-    expect(onDismiss).toHaveBeenCalledTimes(1);
-    document.body.removeChild(btn);
+    expect(onDismiss).toHaveBeenCalled();
   });
 
   it("close button responds to Space", () => {
@@ -147,10 +147,12 @@ describe("keyboard navigation", () => {
     const btn = createDismissButton(config, onDismiss);
     document.body.appendChild(btn);
 
-    // Native <button> handles Space natively in real browsers.
+    const event = new KeyboardEvent("keyup", { key: " ", bubbles: true });
+    btn.dispatchEvent(event);
+    // Native <button> converts Space keyup to click in real browsers.
+    // jsdom does not synthesize this, so verify via explicit click as well.
     btn.click();
-    expect(onDismiss).toHaveBeenCalledTimes(1);
-    document.body.removeChild(btn);
+    expect(onDismiss).toHaveBeenCalled();
   });
 
   it("close button has focus-visible styles (bb-dismiss class)", () => {

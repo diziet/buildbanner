@@ -60,6 +60,9 @@ function _buildStyles(config, positionMode) {
     .bb-clickable {
       cursor: pointer;
     }
+    .bb-live-region {
+      display: contents;
+    }
     .bb-dismiss {
       all: unset;
       cursor: pointer;
@@ -69,11 +72,7 @@ function _buildStyles(config, positionMode) {
       font-size: 14px;
       line-height: inherit;
     }
-    .bb-dismiss:focus-visible {
-      outline: 2px solid #4da6ff;
-      outline-offset: 2px;
-      border-radius: 2px;
-    }
+    .bb-dismiss:focus-visible,
     .bb-wrapper a:focus-visible {
       outline: 2px solid #4da6ff;
       outline-offset: 2px;
