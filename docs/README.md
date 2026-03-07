@@ -29,10 +29,10 @@ Or self-host the script:
 <script src="/static/buildbanner.min.js"></script>
 ```
 
-Or install via npm:
+Or install via npm (from GitHub):
 
 ```bash
-npm install buildbanner
+npm install github:diziet/buildbanner
 ```
 
 ```js
@@ -107,9 +107,19 @@ Server helpers read `BUILDBANNER_*` environment variables at startup, checked be
 
 For the full environment variable reference, see [docs/configuration.md](configuration.md#server-side-environment-variables).
 
+## Server Helper Installation
+
+Install the server helper for your language:
+
+| Language | Install command |
+|----------|----------------|
+| **Python** (Flask, FastAPI, Django, WSGI) | `pip install git+https://github.com/diziet/buildbanner.git#subdirectory=python` |
+| **Node** (Express, Koa, Hono) | `npm install github:diziet/buildbanner` |
+| **Ruby** (Rack, Rails) | Add `gem "buildbanner", github: "diziet/buildbanner", glob: "ruby/*.gemspec"` to your Gemfile |
+
 ## Server Helpers
 
-BuildBanner provides one-liner middleware for popular frameworks. Each helper reads git info once at startup and caches it in memory.
+BuildBanner provides one-liner middleware for popular frameworks. Each helper reads git info once at startup and caches it in memory. See [installation](#server-helper-installation) for setup.
 
 ### Flask
 
@@ -124,16 +134,12 @@ buildbanner_blueprint(extras=lambda: {
 })
 ```
 
-Package: `pip install buildbanner`
-
 ### FastAPI
 
 ```python
 from buildbanner import BuildBannerMiddleware
 app.add_middleware(BuildBannerMiddleware)
 ```
-
-Package: `pip install buildbanner`
 
 ### Django
 
@@ -142,16 +148,12 @@ Package: `pip install buildbanner`
 MIDDLEWARE = ['buildbanner.django.BuildBannerMiddleware']
 ```
 
-Package: `pip install buildbanner`
-
 ### WSGI (generic)
 
 ```python
 from buildbanner import buildbanner_wsgi
 app = buildbanner_wsgi(app)
 ```
-
-Package: `pip install buildbanner`
 
 ### Express
 
@@ -169,16 +171,12 @@ app.use(buildBannerMiddleware({
 }));
 ```
 
-Package: `npm install buildbanner`
-
 ### Koa
 
 ```js
 const { buildBannerKoa } = require('buildbanner');
 app.use(buildBannerKoa());
 ```
-
-Package: `npm install buildbanner`
 
 ### Hono
 
@@ -187,13 +185,11 @@ const { buildBannerHono } = require('buildbanner');
 app.use(buildBannerHono());
 ```
 
-Package: `npm install buildbanner`
-
 ### Rack / Rails
 
 ```ruby
 # Gemfile
-gem 'buildbanner'
+gem 'buildbanner', github: 'diziet/buildbanner', glob: 'ruby/*.gemspec'
 
 # Rails — config/application.rb
 config.middleware.use BuildBanner::Middleware
@@ -206,8 +202,6 @@ config.middleware.use BuildBanner::Middleware,
       custom: { workers: Sidekiq::Stats.new.workers_size.to_s } }
   }
 ```
-
-Package: `gem install buildbanner`
 
 ### Static / nginx
 
