@@ -3,8 +3,6 @@
 /** Format elapsed milliseconds as a human-readable uptime string. */
 function _formatElapsed(ms) {
   const totalSeconds = Math.floor(ms / 1000);
-  if (totalSeconds < 0) return null;
-
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -48,6 +46,11 @@ export function startUptimeTicker(element, serverStartedISO) {
   if (!element || !serverStartedISO) return null;
   const start = new Date(serverStartedISO);
   if (isNaN(start.getTime())) return null;
+
+  const initialElapsed = Date.now() - start.getTime();
+  if (initialElapsed >= 0) {
+    element.textContent = `up ${_formatElapsed(initialElapsed)}`;
+  }
 
   const timerId = setInterval(() => {
     if (!element.isConnected) {
