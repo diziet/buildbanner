@@ -18,7 +18,7 @@ app = proc do |_env|
     </body>
     </html>
   HTML
-  ['200', { 'Content-Type' => 'text/html' }, [body]]
+  [200, { 'Content-Type' => 'text/html' }, [body]]
 end
 
 run app

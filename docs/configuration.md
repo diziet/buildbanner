@@ -71,7 +71,7 @@ data-env-hide="production,staging"
 - **Default:** `28`
 - **Type:** Integer (pixels)
 - **Range:** 24 to 48
-- **Description:** Banner height in pixels. Values outside the range are clamped.
+- **Description:** Banner height in pixels. Values outside the range are silently clamped to the nearest bound. Set `data-debug="true"` to surface diagnostic logs if you suspect misconfiguration.
 
 ### `data-debug`
 
@@ -152,6 +152,7 @@ Server helpers read these environment variables at startup. They take precedence
 | `BUILDBANNER_APP_NAME` | Application name | `my-app` |
 | `BUILDBANNER_ENVIRONMENT` | Deployment environment | `development` |
 | `BUILDBANNER_DEPLOYED_AT` | Deployment timestamp | `2026-02-13T12:00:00Z` |
+| `BUILDBANNER_PORT` | Server port number | `8001` |
 | `BUILDBANNER_TOKEN` | Bearer token for auth | `my-secret-token-here` |
 | `BUILDBANNER_CUSTOM_*` | Custom key-value fields | See below |
 

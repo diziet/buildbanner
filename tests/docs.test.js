@@ -1,6 +1,6 @@
 /** Tests for documentation completeness. */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -31,33 +31,31 @@ describe('documentation files exist', () => {
 describe('README contains required sections', () => {
   let readme;
 
-  it('loads README.md', () => {
+  beforeAll(() => {
     readme = readDoc('docs/README.md');
+  });
+
+  it('is non-empty', () => {
     expect(readme.length).toBeGreaterThan(0);
   });
 
   it('contains quick start section', () => {
-    readme = readme || readDoc('docs/README.md');
     expect(readme.toLowerCase()).toContain('quick start');
   });
 
   it('contains configuration section', () => {
-    readme = readme || readDoc('docs/README.md');
     expect(readme.toLowerCase()).toContain('## configuration');
   });
 
   it('contains API section', () => {
-    readme = readme || readDoc('docs/README.md');
     expect(readme.toLowerCase()).toContain('programmatic api');
   });
 
   it('contains server helpers section', () => {
-    readme = readme || readDoc('docs/README.md');
     expect(readme.toLowerCase()).toContain('server helpers');
   });
 
   it('contains environment variables section', () => {
-    readme = readme || readDoc('docs/README.md');
     expect(readme.toLowerCase()).toContain('environment variables');
   });
 });
@@ -91,9 +89,12 @@ describe('all framework names are mentioned in README', () => {
 
   let readme;
 
+  beforeAll(() => {
+    readme = readDoc('docs/README.md');
+  });
+
   for (const framework of frameworks) {
     it(`mentions ${framework}`, () => {
-      readme = readme || readDoc('docs/README.md');
       expect(readme).toContain(framework);
     });
   }

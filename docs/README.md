@@ -13,7 +13,6 @@ A crash-proof, language-agnostic developer info banner for web apps. Drop a `<sc
 ```
 
 <!-- TODO: Replace with actual banner screenshot -->
-![BuildBanner screenshot placeholder](screenshot-placeholder.png)
 
 ## Quick Start
 
@@ -42,7 +41,7 @@ import 'buildbanner';
 
 ## Configuration
 
-All configuration is done via `data-*` attributes on the script tag:
+All configuration is done via `data-*` attributes on the script tag. For example:
 
 ```html
 <script
@@ -52,27 +51,10 @@ All configuration is done via `data-*` attributes on the script tag:
   data-theme="dark"
   data-dismiss="session"
   data-poll="30"
-  data-height="28"
-  data-push="true"
-  data-token="my-shared-secret"
 ></script>
 ```
 
-| Attribute | Default | Values |
-|-----------|---------|--------|
-| `data-endpoint` | `/buildbanner.json` | Any URL path |
-| `data-position` | `top` | `top`, `bottom` |
-| `data-theme` | `dark` | `dark`, `light`, `auto` (follows `prefers-color-scheme`) |
-| `data-dismiss` | `session` | `session` (sessionStorage), `permanent` (localStorage), `none` (no dismiss button) |
-| `data-env-hide` | _(none)_ | Comma-separated environments to auto-hide: `"production,staging"` |
-| `data-height` | `28` | Banner height in px (min 24, max 48) |
-| `data-debug` | `false` | `true` promotes diagnostic logs to `console.warn` |
-| `data-poll` | `0` | Seconds between re-fetches (0 = fetch once) |
-| `data-push` | `true` | `true` pushes app content down; `false` overlays |
-| `data-token` | _(none)_ | Shared token sent as `Authorization: Bearer <token>` |
-| `data-manual` | _(not set)_ | When present, disables auto-init (use `BuildBanner.init()` instead) |
-
-For full configuration details, see [docs/configuration.md](configuration.md).
+For the full list of attributes and their defaults, see [docs/configuration.md](configuration.md).
 
 ## Programmatic API
 
@@ -121,29 +103,9 @@ Without this, SHA and branch are rendered as plain text for unrecognized hosts.
 
 ## Environment Variables
 
-Server helpers read these environment variables (checked before git fallback):
+Server helpers read `BUILDBANNER_*` environment variables at startup, checked before git fallback. Any `BUILDBANNER_CUSTOM_*` variable becomes a `custom` field (suffix lowercased to form the key, e.g. `BUILDBANNER_CUSTOM_REGION=us-east-1` becomes `custom.region`).
 
-| Variable | Description |
-|----------|-------------|
-| `BUILDBANNER_SHA` | Override git SHA |
-| `BUILDBANNER_BRANCH` | Override git branch |
-| `BUILDBANNER_REPO_URL` | Override repository URL |
-| `BUILDBANNER_COMMIT_DATE` | Override commit date (ISO 8601 UTC) |
-| `BUILDBANNER_APP_NAME` | Application name |
-| `BUILDBANNER_ENVIRONMENT` | Deployment environment (e.g. `development`, `staging`, `production`) |
-| `BUILDBANNER_DEPLOYED_AT` | Deployment timestamp (ISO 8601 UTC) |
-| `BUILDBANNER_TOKEN` | Bearer token for endpoint auth |
-| `BUILDBANNER_CUSTOM_*` | Custom fields — suffix is lowercased to become the key |
-
-### `BUILDBANNER_CUSTOM_*` Derivation Rule
-
-Any environment variable prefixed with `BUILDBANNER_CUSTOM_` becomes a custom field. The suffix after `BUILDBANNER_CUSTOM_` is lowercased to form the key:
-
-```bash
-BUILDBANNER_CUSTOM_REGION=us-east-1    # → custom.region = "us-east-1"
-BUILDBANNER_CUSTOM_MODEL=gpt-4         # → custom.model = "gpt-4"
-BUILDBANNER_CUSTOM_WORKER_COUNT=4      # → custom.worker_count = "4"
-```
+For the full environment variable reference, see [docs/configuration.md](configuration.md#server-side-environment-variables).
 
 ## Server Helpers
 
@@ -253,20 +215,19 @@ For static sites, serve a hand-crafted `buildbanner.json` file and include the c
 
 ## JSON Contract
 
-The server endpoint (`GET /buildbanner.json`) returns a JSON object. Only `sha` and `branch` are required — all other fields are optional and the client renders whatever is present.
+The server endpoint (`GET /buildbanner.json`) returns a JSON object. Server helpers include `_buildbanner`, `sha`, `sha_full`, `branch`, and `server_started` in every response. The client requires only `sha` and `branch`; all other fields are optional and the client renders whatever is present.
 
 ```json
 {
   "_buildbanner": { "version": 1 },
   "sha": "a1b2c3d",
+  "sha_full": "a1b2c3d4e5f67890abcdef1234567890abcdef12",
   "branch": "main",
-  "sha_full": "a1b2c3d4e5f6...",
+  "server_started": "2026-02-13T14:30:00Z",
   "commit_date": "2026-02-13T14:25:00Z",
   "repo_url": "https://github.com/user/repo",
-  "server_started": "2026-02-13T14:30:00Z",
   "deployed_at": "2026-02-13T12:00:00Z",
   "environment": "development",
-  "port": 8001,
   "app_name": "my-app",
   "tests": { "status": "pass", "summary": "1.1M passed", "url": "/api/tests" },
   "build": { "status": "fresh", "summary": "built 2m ago" },
