@@ -28,6 +28,7 @@ function fullData() {
 
 describe("renderSegments", () => {
   let wrapper;
+  let lastTickerTimerId = null;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -36,11 +37,22 @@ describe("renderSegments", () => {
   });
 
   afterEach(() => {
+    if (lastTickerTimerId) {
+      clearInterval(lastTickerTimerId);
+      lastTickerTimerId = null;
+    }
     vi.useRealTimers();
   });
 
+  /** Render helper that tracks ticker for cleanup. */
+  function render(data) {
+    const result = renderSegments(data, wrapper);
+    lastTickerTimerId = result.tickerTimerId;
+    return result;
+  }
+
   it("full data renders all segments in correct order", () => {
-    const { tickerTimerId } = renderSegments(fullData(), {}, wrapper);
+    render(fullData());
     const order = getSegmentOrder(wrapper);
     expect(order).toEqual([
       "app-name",
@@ -56,285 +68,161 @@ describe("renderSegments", () => {
       "custom-region",
       "custom-workers",
     ]);
-    if (tickerTimerId) clearInterval(tickerTimerId);
   });
 
   it("each segment has correct data-segment attribute", () => {
-    const { tickerTimerId } = renderSegments(fullData(), {}, wrapper);
-    expect(wrapper.querySelector("[data-segment='app-name']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='environment']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='branch']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='sha']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='commit-date']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='uptime']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='deploy-age']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='tests']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='build']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='port']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='custom-region']")).not.toBeNull();
-    expect(wrapper.querySelector("[data-segment='custom-workers']")).not.toBeNull();
-    if (tickerTimerId) clearInterval(tickerTimerId);
+    render(fullData());
+    const expected = [
+      "app-name", "environment", "branch", "sha", "commit-date",
+      "uptime", "deploy-age", "tests", "build", "port",
+      "custom-region", "custom-workers",
+    ];
+    for (const name of expected) {
+      expect(wrapper.querySelector(`[data-segment='${name}']`)).not.toBeNull();
+    }
   });
 
   it("canonical segment order verified by data-segment attribute sequence", () => {
-    const { tickerTimerId } = renderSegments(fullData(), {}, wrapper);
+    render(fullData());
     const order = getSegmentOrder(wrapper);
-    const appIdx = order.indexOf("app-name");
-    const envIdx = order.indexOf("environment");
-    const branchIdx = order.indexOf("branch");
-    const shaIdx = order.indexOf("sha");
-    const dateIdx = order.indexOf("commit-date");
-    const uptimeIdx = order.indexOf("uptime");
-    const deployIdx = order.indexOf("deploy-age");
-    const testsIdx = order.indexOf("tests");
-    const buildIdx = order.indexOf("build");
-    const portIdx = order.indexOf("port");
+    const canonical = [
+      "app-name", "environment", "branch", "sha", "commit-date",
+      "uptime", "deploy-age", "tests", "build", "port",
+    ];
 
-    expect(appIdx).toBeLessThan(envIdx);
-    expect(envIdx).toBeLessThan(branchIdx);
-    expect(branchIdx).toBeLessThan(shaIdx);
-    expect(shaIdx).toBeLessThan(dateIdx);
-    expect(dateIdx).toBeLessThan(uptimeIdx);
-    expect(uptimeIdx).toBeLessThan(deployIdx);
-    expect(deployIdx).toBeLessThan(testsIdx);
-    expect(testsIdx).toBeLessThan(buildIdx);
-    expect(buildIdx).toBeLessThan(portIdx);
-    if (tickerTimerId) clearInterval(tickerTimerId);
+    for (let i = 0; i < canonical.length - 1; i++) {
+      expect(order.indexOf(canonical[i])).toBeLessThan(
+        order.indexOf(canonical[i + 1]),
+      );
+    }
   });
 
   it("minimal data (sha + branch only) renders just those two", () => {
-    renderSegments({ sha: "abc1234", branch: "dev" }, {}, wrapper);
-    const order = getSegmentOrder(wrapper);
-    expect(order).toEqual(["branch", "sha"]);
+    render({ sha: "abc1234", branch: "dev" });
+    expect(getSegmentOrder(wrapper)).toEqual(["branch", "sha"]);
   });
 
   it("missing optional fields are skipped (no empty spans)", () => {
-    renderSegments({ sha: "abc1234" }, {}, wrapper);
-    const order = getSegmentOrder(wrapper);
-    expect(order).toEqual(["sha"]);
-    // No empty spans — every child with data-segment has content
+    render({ sha: "abc1234" });
+    expect(getSegmentOrder(wrapper)).toEqual(["sha"]);
     const segments = wrapper.querySelectorAll("[data-segment]");
     for (const seg of segments) {
       expect(seg.textContent).not.toBe("");
     }
   });
 
-  it("branch = 'HEAD' is hidden", () => {
-    renderSegments({ sha: "abc", branch: "HEAD" }, {}, wrapper);
-    expect(wrapper.querySelector("[data-segment='branch']")).toBeNull();
-  });
-
-  it("branch = null is hidden", () => {
-    renderSegments({ sha: "abc", branch: null }, {}, wrapper);
-    expect(wrapper.querySelector("[data-segment='branch']")).toBeNull();
-  });
-
-  it("branch = '' is hidden", () => {
-    renderSegments({ sha: "abc", branch: "" }, {}, wrapper);
+  it.each([
+    ["HEAD", "branch = 'HEAD'"],
+    [null, "branch = null"],
+    ["", "branch = ''"],
+  ])("branch hidden when value is %s (%s)", (branch) => {
+    render({ sha: "abc", branch });
     expect(wrapper.querySelector("[data-segment='branch']")).toBeNull();
   });
 
   it("valid branch is shown", () => {
-    renderSegments({ sha: "abc", branch: "feature/login" }, {}, wrapper);
+    render({ sha: "abc", branch: "feature/login" });
     const el = wrapper.querySelector("[data-segment='branch']");
     expect(el).not.toBeNull();
     expect(el.textContent).toBe("feature/login");
   });
 
   it("commit_date is converted to local time", () => {
-    renderSegments(
-      { sha: "abc", commit_date: "2026-02-13T14:25:00Z" },
-      {},
-      wrapper,
-    );
+    render({ sha: "abc", commit_date: "2026-02-13T14:25:00Z" });
     const el = wrapper.querySelector("[data-segment='commit-date']");
     expect(el).not.toBeNull();
-    // Should be a local time string, not the raw ISO
     expect(el.textContent).not.toBe("2026-02-13T14:25:00Z");
     expect(el.textContent.length).toBeGreaterThan(0);
   });
 
   it("server_started produces uptime string via formatUptime", () => {
-    renderSegments(
-      { sha: "abc", server_started: "2026-02-13T12:00:00Z" },
-      {},
-      wrapper,
-    );
+    render({ sha: "abc", server_started: "2026-02-13T12:00:00Z" });
     const el = wrapper.querySelector("[data-segment='uptime']");
     expect(el).not.toBeNull();
-    expect(el.textContent).toMatch(/^up /);
     expect(el.textContent).toBe("up 2h 30m");
   });
 
   it("deployed_at produces deploy-age string via formatDeployAge", () => {
-    renderSegments(
-      { sha: "abc", deployed_at: "2026-02-13T10:00:00Z" },
-      {},
-      wrapper,
-    );
+    render({ sha: "abc", deployed_at: "2026-02-13T10:00:00Z" });
     const el = wrapper.querySelector("[data-segment='deploy-age']");
     expect(el).not.toBeNull();
-    expect(el.textContent).toMatch(/^deployed .+ ago$/);
     expect(el.textContent).toBe("deployed 4h 30m ago");
   });
 
   it("both server_started and deployed_at present renders both segments", () => {
-    const { tickerTimerId } = renderSegments(
-      {
-        sha: "abc",
-        server_started: "2026-02-13T12:00:00Z",
-        deployed_at: "2026-02-13T10:00:00Z",
-      },
-      {},
-      wrapper,
-    );
+    render({
+      sha: "abc",
+      server_started: "2026-02-13T12:00:00Z",
+      deployed_at: "2026-02-13T10:00:00Z",
+    });
     expect(wrapper.querySelector("[data-segment='uptime']")).not.toBeNull();
     expect(wrapper.querySelector("[data-segment='deploy-age']")).not.toBeNull();
-    if (tickerTimerId) clearInterval(tickerTimerId);
   });
 
   it("neither server_started nor deployed_at renders no time segments", () => {
-    renderSegments({ sha: "abc" }, {}, wrapper);
+    render({ sha: "abc" });
     expect(wrapper.querySelector("[data-segment='uptime']")).toBeNull();
     expect(wrapper.querySelector("[data-segment='deploy-age']")).toBeNull();
   });
 
-  it("status dot is green for pass", () => {
-    renderSegments(
-      { sha: "abc", tests: { status: "pass" } },
-      {},
-      wrapper,
-    );
+  it.each([
+    ["pass", "tests", "\u{1F7E2}"],
+    ["fresh", "build", "\u{1F7E2}"],
+    ["fail", "tests", "\u{1F534}"],
+    ["stale", "build", "\u{1F534}"],
+    ["running", "tests", "\u{1F7E1}"],
+    ["building", "build", "\u{1F7E1}"],
+    ["idle", "tests", "\u26AA"],
+    ["unknown-thing", "tests", "\u26AA"],
+  ])("status dot for %s on %s segment is correct", (status, field, dot) => {
+    const data = { sha: "abc", [field]: { status } };
+    render(data);
+    const el = wrapper.querySelector(`[data-segment='${field}']`);
+    expect(el.textContent).toContain(dot);
+  });
+
+  it.each(["tests", "build"])(
+    "%s.url present makes segment a clickable <a>",
+    (field) => {
+      const statusVal = field === "tests" ? "pass" : "fresh";
+      const data = { sha: "abc", [field]: { status: statusVal, url: `/api/${field}` } };
+      render(data);
+      const el = wrapper.querySelector(`[data-segment='${field}']`);
+      expect(el.tagName).toBe("A");
+      expect(el.getAttribute("target")).toBe("_blank");
+      expect(el.getAttribute("rel")).toBe("noopener");
+      expect(el.href).toContain(`/api/${field}`);
+    },
+  );
+
+  it.each(["tests", "build"])(
+    "%s.url absent makes segment a <span>",
+    (field) => {
+      const statusVal = field === "tests" ? "pass" : "fresh";
+      const data = { sha: "abc", [field]: { status: statusVal } };
+      render(data);
+      const el = wrapper.querySelector(`[data-segment='${field}']`);
+      expect(el.tagName).toBe("SPAN");
+    },
+  );
+
+  it("javascript: URL in tests.url falls back to <span>", () => {
+    render({
+      sha: "abc",
+      tests: { status: "pass", url: "javascript:alert(1)" },
+    });
     const el = wrapper.querySelector("[data-segment='tests']");
-    expect(el.textContent).toContain("\u{1F7E2}");
-  });
-
-  it("status dot is green for fresh", () => {
-    renderSegments(
-      { sha: "abc", build: { status: "fresh" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='build']");
-    expect(el.textContent).toContain("\u{1F7E2}");
-  });
-
-  it("status dot is red for fail", () => {
-    renderSegments(
-      { sha: "abc", tests: { status: "fail" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='tests']");
-    expect(el.textContent).toContain("\u{1F534}");
-  });
-
-  it("status dot is red for stale", () => {
-    renderSegments(
-      { sha: "abc", build: { status: "stale" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='build']");
-    expect(el.textContent).toContain("\u{1F534}");
-  });
-
-  it("status dot is yellow for running", () => {
-    renderSegments(
-      { sha: "abc", tests: { status: "running" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='tests']");
-    expect(el.textContent).toContain("\u{1F7E1}");
-  });
-
-  it("status dot is yellow for building", () => {
-    renderSegments(
-      { sha: "abc", build: { status: "building" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='build']");
-    expect(el.textContent).toContain("\u{1F7E1}");
-  });
-
-  it("status dot is white for idle", () => {
-    renderSegments(
-      { sha: "abc", tests: { status: "idle" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='tests']");
-    expect(el.textContent).toContain("\u26AA");
-  });
-
-  it("status dot is white for unknown status", () => {
-    renderSegments(
-      { sha: "abc", tests: { status: "unknown-thing" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='tests']");
-    expect(el.textContent).toContain("\u26AA");
-  });
-
-  it("tests.url present makes tests segment a clickable <a>", () => {
-    renderSegments(
-      { sha: "abc", tests: { status: "pass", url: "/api/tests" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='tests']");
-    expect(el.tagName).toBe("A");
-    expect(el.getAttribute("target")).toBe("_blank");
-    expect(el.getAttribute("rel")).toBe("noopener");
-    expect(el.href).toContain("/api/tests");
-  });
-
-  it("tests.url absent makes tests segment a <span>", () => {
-    renderSegments(
-      { sha: "abc", tests: { status: "pass" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='tests']");
-    expect(el.tagName).toBe("SPAN");
-  });
-
-  it("build.url present makes build segment a clickable <a>", () => {
-    renderSegments(
-      { sha: "abc", build: { status: "fresh", url: "/api/build" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='build']");
-    expect(el.tagName).toBe("A");
-    expect(el.getAttribute("target")).toBe("_blank");
-    expect(el.getAttribute("rel")).toBe("noopener");
-  });
-
-  it("build.url absent makes build segment a <span>", () => {
-    renderSegments(
-      { sha: "abc", build: { status: "fresh" } },
-      {},
-      wrapper,
-    );
-    const el = wrapper.querySelector("[data-segment='build']");
     expect(el.tagName).toBe("SPAN");
   });
 
   it("custom fields render in alphabetical key order", () => {
-    renderSegments(
-      {
-        sha: "abc",
-        custom: { zulu: "last", alpha: "first", mike: "middle" },
-      },
-      {},
-      wrapper,
+    render({
+      sha: "abc",
+      custom: { zulu: "last", alpha: "first", mike: "middle" },
+    });
+    const customSegments = getSegmentOrder(wrapper).filter((s) =>
+      s.startsWith("custom-"),
     );
-    const order = getSegmentOrder(wrapper);
-    const customSegments = order.filter((s) => s.startsWith("custom-"));
     expect(customSegments).toEqual([
       "custom-alpha",
       "custom-mike",
@@ -343,25 +231,17 @@ describe("renderSegments", () => {
   });
 
   it("custom fields have correct data-segment attributes", () => {
-    renderSegments(
-      { sha: "abc", custom: { region: "us-east-1" } },
-      {},
-      wrapper,
-    );
+    render({ sha: "abc", custom: { region: "us-east-1" } });
     const el = wrapper.querySelector("[data-segment='custom-region']");
     expect(el).not.toBeNull();
     expect(el.textContent).toBe("us-east-1");
   });
 
   it("non-string custom values are ignored", () => {
-    renderSegments(
-      {
-        sha: "abc",
-        custom: { valid: "yes", number: 42, bool: true, obj: {} },
-      },
-      {},
-      wrapper,
-    );
+    render({
+      sha: "abc",
+      custom: { valid: "yes", number: 42, bool: true, obj: {} },
+    });
     const customSegments = getSegmentOrder(wrapper).filter((s) =>
       s.startsWith("custom-"),
     );
@@ -369,7 +249,7 @@ describe("renderSegments", () => {
   });
 
   it("empty custom object produces no custom segments", () => {
-    renderSegments({ sha: "abc", custom: {} }, {}, wrapper);
+    render({ sha: "abc", custom: {} });
     const customSegments = getSegmentOrder(wrapper).filter((s) =>
       s.startsWith("custom-"),
     );
@@ -378,7 +258,7 @@ describe("renderSegments", () => {
 
   it("XSS in branch value is escaped via textContent", () => {
     const xss = '<script>alert("xss")</script>';
-    renderSegments({ sha: "abc", branch: xss }, {}, wrapper);
+    render({ sha: "abc", branch: xss });
     const el = wrapper.querySelector("[data-segment='branch']");
     expect(el.textContent).toBe(xss);
     expect(el.innerHTML).not.toContain("<script>");
@@ -386,32 +266,20 @@ describe("renderSegments", () => {
 
   it("XSS in custom values is escaped via textContent", () => {
     const xss = '<img onerror="alert(1)" src=x>';
-    renderSegments(
-      { sha: "abc", custom: { evil: xss } },
-      {},
-      wrapper,
-    );
+    render({ sha: "abc", custom: { evil: xss } });
     const el = wrapper.querySelector("[data-segment='custom-evil']");
     expect(el.textContent).toBe(xss);
     expect(el.innerHTML).not.toContain("<img");
   });
 
   it("tests with summary renders dot + summary text", () => {
-    renderSegments(
-      { sha: "abc", tests: { status: "pass", summary: "1.1M passed" } },
-      {},
-      wrapper,
-    );
+    render({ sha: "abc", tests: { status: "pass", summary: "1.1M passed" } });
     const el = wrapper.querySelector("[data-segment='tests']");
     expect(el.textContent).toBe("\u{1F7E2} 1.1M passed");
   });
 
   it("build with summary renders dot + summary text", () => {
-    renderSegments(
-      { sha: "abc", build: { status: "fresh", summary: "built 2m ago" } },
-      {},
-      wrapper,
-    );
+    render({ sha: "abc", build: { status: "fresh", summary: "built 2m ago" } });
     const el = wrapper.querySelector("[data-segment='build']");
     expect(el.textContent).toBe("\u{1F7E2} built 2m ago");
   });

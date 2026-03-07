@@ -13,6 +13,7 @@ const STATUS_DOTS = {
 };
 
 const DEFAULT_DOT = "\u26AA";
+const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 
 /** Get the status dot emoji for a given status string. */
 function _getStatusDot(status) {
@@ -35,7 +36,17 @@ function _createSpan(segmentName, text) {
   return span;
 }
 
-/** Create a status segment (span or anchor if url present). */
+/** Check if a URL has a safe protocol (http/https only). */
+function _isSafeUrl(url) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return ALLOWED_PROTOCOLS.has(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
+/** Create a status segment (span or anchor if url present and safe). */
 function _createStatusSegment(segmentName, statusObj) {
   if (!statusObj || !statusObj.status) return null;
 
@@ -44,7 +55,7 @@ function _createStatusSegment(segmentName, statusObj) {
     ? `${dot} ${statusObj.summary}`
     : `${dot} ${statusObj.status}`;
 
-  if (statusObj.url) {
+  if (statusObj.url && _isSafeUrl(statusObj.url)) {
     const anchor = document.createElement("a");
     anchor.setAttribute("data-segment", segmentName);
     anchor.href = statusObj.url;
@@ -78,11 +89,8 @@ function _appendSegment(wrapper, segment, isFirst) {
   wrapper.appendChild(segment);
 }
 
-/**
- * Render all segments into the wrapper in canonical order.
- * Returns { wrapper, tickerTimerId }.
- */
-export function renderSegments(data, config, wrapper) {
+/** Render all segments into the wrapper in canonical order. Returns { tickerTimerId }. */
+export function renderSegments(data, wrapper) {
   const segments = [];
   let tickerTimerId = null;
 
@@ -157,5 +165,5 @@ export function renderSegments(data, config, wrapper) {
     _appendSegment(wrapper, segments[i], i === 0);
   }
 
-  return { wrapper, tickerTimerId };
+  return { tickerTimerId };
 }
