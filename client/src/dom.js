@@ -14,13 +14,13 @@ function _resolveStyleValues(config) {
 }
 
 /** Build shared CSS properties for the banner wrapper. */
-function _buildWrapperCssProperties(height, zIndex) {
+function _buildWrapperCssProperties(height, zIndex, positionMode = "sticky") {
   return `
       all: initial;
       display: flex;
       align-items: center;
       gap: 0;
-      position: sticky;
+      position: ${positionMode};
       top: 0;
       z-index: ${zIndex};
       height: ${height}px;
@@ -49,11 +49,11 @@ function _buildAnchorCss(parentSelector) {
 }
 
 /** Generate shadow DOM stylesheet for the banner. */
-function _buildStyles(config) {
+function _buildStyles(config, positionMode) {
   const { height, zIndex } = _resolveStyleValues(config);
 
   return `
-    .bb-wrapper {${_buildWrapperCssProperties(height, zIndex)}
+    .bb-wrapper {${_buildWrapperCssProperties(height, zIndex, positionMode)}
     }
     .bb-clickable {
       cursor: pointer;
@@ -76,7 +76,7 @@ function _buildStyles(config) {
 }
 
 /** Generate fallback stylesheet for environments without Shadow DOM. */
-function _buildFallbackStyles(config) {
+function _buildFallbackStyles(config, positionMode) {
   const { height, zIndex } = _resolveStyleValues(config);
 
   return `
@@ -84,7 +84,7 @@ function _buildFallbackStyles(config) {
       all: initial;
       display: block;
     }
-    .__buildbanner-wrapper {${_buildWrapperCssProperties(height, zIndex)}
+    .__buildbanner-wrapper {${_buildWrapperCssProperties(height, zIndex, positionMode)}
       font-weight: normal;
       font-style: normal;
       text-transform: none;
@@ -113,7 +113,7 @@ function _applyCommonAttributes(host, wrapper) {
  * Create the banner host element with Shadow DOM (or fallback).
  * Returns { host, shadowRoot, wrapper, fallbackStyle }.
  */
-export function createBannerHost(config = {}) {
+export function createBannerHost(config = {}, positionMode = "sticky") {
   const logger = createLogger(config.debug);
 
   if (!document.body) {
@@ -133,7 +133,7 @@ export function createBannerHost(config = {}) {
     shadowRoot = host.attachShadow({ mode: "open" });
 
     const style = document.createElement("style");
-    style.textContent = _buildStyles(config);
+    style.textContent = _buildStyles(config, positionMode);
     shadowRoot.appendChild(style);
 
     wrapper = document.createElement("div");
@@ -144,7 +144,7 @@ export function createBannerHost(config = {}) {
     host.className = "__buildbanner-host";
 
     fallbackStyle = document.createElement("style");
-    fallbackStyle.textContent = _buildFallbackStyles(config);
+    fallbackStyle.textContent = _buildFallbackStyles(config, positionMode);
     document.head.appendChild(fallbackStyle);
 
     wrapper = document.createElement("div");
