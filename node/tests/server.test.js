@@ -3,33 +3,13 @@ import { describe, it, expect } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import { buildBannerMiddleware } from '../server.js';
-
-const FAKE_SHA = 'a1b2c3d';
-const FAKE_SHA_FULL = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
-const FAKE_BRANCH = 'main';
-const FAKE_TOKEN = 'abcdefghijklmnop';
-
-const FAKE_BANNER_DATA = {
-  _buildbanner: { version: 1 },
-  sha: FAKE_SHA,
-  sha_full: FAKE_SHA_FULL,
-  branch: FAKE_BRANCH,
-  server_started: '2026-02-13T14:25:00.000Z',
-};
-
-/** Create a fake createBanner factory with optional token auth. */
-function fakeCreateBanner(token = null) {
-  return () => ({
-    getBannerData: () => ({ ...FAKE_BANNER_DATA }),
-    checkAuth: (header) => {
-      if (!token) return { authorized: true };
-      if (!header || !header.startsWith('Bearer ')) {
-        return { authorized: false };
-      }
-      return { authorized: header.slice('Bearer '.length) === token };
-    },
-  });
-}
+import {
+  FAKE_SHA,
+  FAKE_SHA_FULL,
+  FAKE_BRANCH,
+  FAKE_TOKEN,
+  fakeCreateBanner,
+} from './helpers/fixtures.js';
 
 /** Create an Express app with the middleware and an extra test route. */
 function createApp(options = {}) {

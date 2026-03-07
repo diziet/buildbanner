@@ -1,9 +1,7 @@
 /** BuildBanner Express middleware — serves build info as JSON. */
 'use strict';
 
-const { createBanner } = require('./lib/core');
-
-const DEFAULT_PATH = '/buildbanner.json';
+const { createMiddlewareCore } = require('./lib/middleware-common');
 
 /**
  * Create Express middleware that serves BuildBanner JSON.
@@ -15,12 +13,7 @@ const DEFAULT_PATH = '/buildbanner.json';
  * @returns {Function} Express middleware (req, res, next).
  */
 function buildBannerMiddleware(options = {}) {
-  const servePath = options.path || DEFAULT_PATH;
-  const factory = options._createBanner || createBanner;
-  const banner = factory({
-    token: options.token,
-    extras: options.extras,
-  });
+  const { servePath, banner } = createMiddlewareCore(options);
 
   return function buildBannerHandler(req, res, next) {
     if (req.method !== 'GET' || req.path !== servePath) {

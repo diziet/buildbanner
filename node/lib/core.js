@@ -4,6 +4,7 @@
 const childProcess = require('child_process');
 const crypto = require('crypto');
 
+const DEFAULT_PATH = '/buildbanner.json';
 const SHORT_SHA_LEN = 7;
 const MIN_SHA_FULL_LEN = 8;
 const MIN_TOKEN_LEN = 16;
@@ -274,6 +275,7 @@ function createBanner(options = {}) {
 
 module.exports = {
   createBanner,
+  DEFAULT_PATH,
   _sanitizeUrl,
   _runGit,
   _readGitInfo,
