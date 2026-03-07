@@ -13,8 +13,17 @@ const FIXTURES = JSON.parse(
   readFileSync(join(__dirname, '../../shared/test_fixtures.json'), 'utf8')
 );
 
-const FAKE_SHA_FULL = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
-const FAKE_COMMIT_DATE = '2026-02-13T14:25:00+00:00';
+const DEFAULTS = FIXTURES.defaults;
+
+// Node's git log format is "%H %h %cd" — 3 space-separated tokens.
+const GIT_LOG_OUTPUT =
+  `${DEFAULTS.sha_full} ${DEFAULTS.sha_short} ${DEFAULTS.commit_date}`;
+
+const TYPE_MAP = {
+  string: 'string',
+  integer: 'number',
+  object: 'object',
+};
 
 let savedEnv = {};
 
@@ -46,9 +55,9 @@ function restoreEnv() {
 /** Create a mock execSync with configurable git responses. */
 function mockGit(overrides = {}) {
   const defaults = {
-    'git log': `${FAKE_SHA_FULL} unused ${FAKE_COMMIT_DATE}`,
-    'git rev-parse': 'main',
-    'git remote': 'https://github.com/org/repo.git',
+    'git log': GIT_LOG_OUTPUT,
+    'git rev-parse': DEFAULTS.branch,
+    'git remote': DEFAULTS.remote_url,
     'git describe': null,
   };
   const responses = { ...defaults, ...overrides };
@@ -183,22 +192,16 @@ describe('parity — JSON structure and field names', () => {
     });
     const data = createBanner().getBannerData();
 
-    const expectedKeys = [
-      '_buildbanner', 'sha', 'sha_full', 'branch',
-      'commit_date', 'repo_url', 'server_started',
-      'deployed_at', 'app_name', 'environment', 'port', 'custom',
-    ];
-    for (const key of expectedKeys) {
+    for (const key of FIXTURES.expected_top_level_keys) {
       expect(data).toHaveProperty(key);
     }
 
-    // Verify types
-    expect(typeof data.sha).toBe('string');
-    expect(typeof data.sha_full).toBe('string');
-    expect(typeof data.branch).toBe('string');
-    expect(typeof data.server_started).toBe('string');
-    expect(typeof data.port).toBe('number');
-    expect(typeof data.custom).toBe('object');
+    // Verify types from shared field_types spec
+    for (const [field, jsonType] of Object.entries(FIXTURES.field_types)) {
+      if (field in data) {
+        expect(typeof data[field]).toBe(TYPE_MAP[jsonType]);
+      }
+    }
     expect(data._buildbanner.version).toBe(1);
   });
 

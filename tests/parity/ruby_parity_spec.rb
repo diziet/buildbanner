@@ -7,18 +7,27 @@ require 'rack/test'
 
 require_relative '../../ruby/lib/buildbanner'
 
-FIXTURES_PATH = File.join(__dir__, '..', '..', 'shared', 'test_fixtures.json')
-FIXTURES = JSON.parse(File.read(FIXTURES_PATH))
+PARITY_FIXTURES_PATH = File.join(__dir__, '..', '..', 'shared', 'test_fixtures.json')
+PARITY_FIXTURES = JSON.parse(File.read(PARITY_FIXTURES_PATH))
+PARITY_DEFAULTS = PARITY_FIXTURES['defaults']
 
-FAKE_SHA_FULL = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2'
-FAKE_COMMIT_DATE = '2026-02-13T14:25:00+00:00'
+# Ruby's git log format is "%H %cd" — 2 space-separated tokens.
+PARITY_GIT_LOG_OUTPUT = "#{PARITY_DEFAULTS['sha_full']} #{PARITY_DEFAULTS['commit_date']}"
+
+TYPE_MAP = {
+  'string' => String,
+  'integer' => Integer,
+  'object' => Hash
+}.freeze
 
 # Default git stub responses keyed by command regex.
-DEFAULT_GIT_STUBS = {
-  /git log/ => ["#{FAKE_SHA_FULL} #{FAKE_COMMIT_DATE}", true],
-  /git rev-parse --abbrev-ref HEAD/ => ["main\n", true],
-  /git describe --tags/ => ['', false],
-  /git remote get-url origin/ => ["https://github.com/org/repo.git\n", true]
+# Word-boundary anchors prevent overlap (e.g. "git describe --tags" vs
+# "git describe --tags --exact-match").
+PARITY_GIT_STUBS = {
+  /\bgit log\b/ => [PARITY_GIT_LOG_OUTPUT, true],
+  /\bgit rev-parse --abbrev-ref HEAD\b/ => ["#{PARITY_DEFAULTS['branch']}\n", true],
+  /\bgit describe --tags\b/ => ['', false],
+  /\bgit remote get-url origin\b/ => ["#{PARITY_DEFAULTS['remote_url']}\n", true]
 }.freeze
 
 RSpec.describe 'Cross-language parity' do
@@ -30,7 +39,7 @@ RSpec.describe 'Cross-language parity' do
     allow(Open3).to receive(:capture2) do |*args|
       cmd = args.flatten.join(' ')
       match = overrides.find { |pattern, _| cmd.match?(pattern) }
-      match ||= DEFAULT_GIT_STUBS.find { |pattern, _| cmd.match?(pattern) }
+      match ||= PARITY_GIT_STUBS.find { |pattern, _| cmd.match?(pattern) }
       if match
         output, success = match[1]
         [output, double(success?: success)]
@@ -62,7 +71,7 @@ RSpec.describe 'Cross-language parity' do
   end
 
   describe 'URL sanitization' do
-    FIXTURES['url_sanitization'].each do |fixture|
+    PARITY_FIXTURES['url_sanitization'].each do |fixture|
       input = fixture['input']
       expected = fixture['expected']
 
@@ -72,7 +81,7 @@ RSpec.describe 'Cross-language parity' do
                           else
                             ["#{input}\n", true]
                           end
-        stub_git(/git remote get-url origin/ => origin_response)
+        stub_git(/\bgit remote get-url origin\b/ => origin_response)
 
         body = get_banner(build_app)
         expect(body['repo_url']).to eq(expected)
@@ -81,19 +90,19 @@ RSpec.describe 'Cross-language parity' do
   end
 
   describe 'branch detection' do
-    FIXTURES['branch_detection'].each do |fixture|
+    PARITY_FIXTURES['branch_detection'].each do |fixture|
       input = fixture['input']
       tag = fixture['tag']
       expected = fixture['expected']
 
       it "resolves input=#{input.inspect}, tag=#{tag.inspect} to #{expected.inspect}" do
         overrides = {
-          /git rev-parse --abbrev-ref HEAD/ => ["#{input}\n", true]
+          /\bgit rev-parse --abbrev-ref HEAD\b/ => ["#{input}\n", true]
         }
         if tag
-          overrides[/git describe --tags --exact-match/] = ["#{tag}\n", true]
+          overrides[/\bgit describe --tags --exact-match\b/] = ["#{tag}\n", true]
         else
-          overrides[/git describe --tags/] = ['', false]
+          overrides[/\bgit describe --tags\b/] = ['', false]
         end
         stub_git(overrides)
 
@@ -172,29 +181,26 @@ RSpec.describe 'Cross-language parity' do
 
       body = get_banner(build_app)
 
-      expected_keys = %w[
-        _buildbanner sha sha_full branch commit_date repo_url
-        server_started deployed_at app_name environment port custom
-      ]
-      expected_keys.each do |key|
+      PARITY_FIXTURES['expected_top_level_keys'].each do |key|
         expect(body).to have_key(key), "Missing key: #{key}"
       end
 
-      expect(body['sha']).to be_a(String)
-      expect(body['sha_full']).to be_a(String)
-      expect(body['branch']).to be_a(String)
-      expect(body['server_started']).to be_a(String)
-      expect(body['port']).to be_a(Integer)
-      expect(body['custom']).to be_a(Hash)
+      # Verify types from shared field_types spec
+      PARITY_FIXTURES['field_types'].each do |field, json_type|
+        next unless body.key?(field)
+
+        expect(body[field]).to be_a(TYPE_MAP[json_type]),
+                               "#{field} should be #{json_type}"
+      end
       expect(body['_buildbanner']['version']).to eq(1)
     end
 
     it 'null top-level fields are omitted from response' do
       stub_git(
-        /git log/ => ['', false],
-        /git rev-parse/ => ['', false],
-        /git remote/ => ['', false],
-        /git describe/ => ['', false]
+        /\bgit log\b/ => ['', false],
+        /\bgit rev-parse\b/ => ['', false],
+        /\bgit remote\b/ => ['', false],
+        /\bgit describe\b/ => ['', false]
       )
 
       body = get_banner(build_app)

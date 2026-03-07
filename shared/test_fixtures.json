@@ -1,4 +1,29 @@
 {
+  "defaults": {
+    "sha_full": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    "sha_short": "a1b2c3d",
+    "commit_date": "2026-02-13T14:25:00+00:00",
+    "branch": "main",
+    "remote_url": "https://github.com/org/repo.git"
+  },
+  "expected_top_level_keys": [
+    "_buildbanner", "sha", "sha_full", "branch",
+    "commit_date", "repo_url", "server_started",
+    "deployed_at", "app_name", "environment", "port", "custom"
+  ],
+  "field_types": {
+    "sha": "string",
+    "sha_full": "string",
+    "branch": "string",
+    "server_started": "string",
+    "commit_date": "string",
+    "repo_url": "string",
+    "deployed_at": "string",
+    "app_name": "string",
+    "environment": "string",
+    "port": "integer",
+    "custom": "object"
+  },
   "url_sanitization": [
     {
       "input": "https://user:ghp_xxxx@github.com/org/repo.git",
