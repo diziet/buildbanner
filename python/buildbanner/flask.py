@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, Optional
 
 from flask import Blueprint, Response, request
 
-from buildbanner.core import get_banner_data, validate_token
+from buildbanner.core import get_banner_data, resolve_token, validate_token
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +17,7 @@ def buildbanner_blueprint(
     token: Optional[str] = None,
 ) -> Blueprint:
     """Create a Flask Blueprint that serves BuildBanner JSON."""
-    import os
-
-    configured_token = token if token is not None else os.environ.get(
-        'BUILDBANNER_TOKEN',
-    )
+    configured_token = resolve_token(token)
 
     bp = Blueprint('buildbanner', __name__)
 

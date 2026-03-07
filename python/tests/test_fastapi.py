@@ -11,15 +11,16 @@ from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from tests.conftest import VALID_TEST_TOKEN, make_git_side_effect, reload_modules
+from tests.conftest import (
+    VALID_TEST_TOKEN, make_git_side_effect, reload_adapter,
+)
 
 
 def _reload_fastapi(**env_overrides):
     """Reload core and fastapi modules, return BuildBannerMiddleware class."""
-    mods = reload_modules(
-        'buildbanner.core', 'buildbanner.fastapi', **env_overrides,
+    return reload_adapter(
+        'buildbanner.fastapi', 'BuildBannerMiddleware', **env_overrides,
     )
-    return mods['buildbanner.fastapi'].BuildBannerMiddleware
 
 
 def _health(request: Request) -> PlainTextResponse:

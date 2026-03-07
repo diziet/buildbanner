@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 SHORT_SHA_LEN = 7
 MIN_SHA_FULL_LEN = 40
 MIN_TOKEN_LEN = 16
+TOKEN_ENV_VAR = 'BUILDBANNER_TOKEN'
 
 
 def _run_git(command: List[str]) -> Optional[str]:
@@ -167,6 +168,13 @@ _env_config = _read_env_config()
 _server_started = datetime.now(timezone.utc).isoformat()
 
 
+def resolve_token(token: Optional[str]) -> Optional[str]:
+    """Resolve token from argument or BUILDBANNER_TOKEN env var."""
+    if token is not None:
+        return token
+    return os.environ.get(TOKEN_ENV_VAR)
+
+
 def validate_token(
     request_header: Optional[str], configured_token: Optional[str],
 ) -> bool:
@@ -259,7 +267,7 @@ def _build_banner_data(
 def _warn_production_token() -> None:
     """Log info if environment is production and token is configured."""
     environment = os.environ.get('BUILDBANNER_ENVIRONMENT')
-    token = os.environ.get('BUILDBANNER_TOKEN')
+    token = os.environ.get(TOKEN_ENV_VAR)
     if environment == 'production' and token and len(token) >= MIN_TOKEN_LEN:
         logger.info(
             'BuildBanner: token auth is enabled in production environment',

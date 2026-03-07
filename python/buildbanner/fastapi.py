@@ -2,10 +2,9 @@
 
 import json
 import logging
-import os
 from typing import Any, Callable, Dict, Optional
 
-from buildbanner.core import get_banner_data, validate_token
+from buildbanner.core import get_banner_data, resolve_token, validate_token
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +47,7 @@ class BuildBannerMiddleware:
         self.app = app
         self.path = path
         self.extras = extras
-        self.token = token if token is not None else os.environ.get(
-            'BUILDBANNER_TOKEN',
-        )
+        self.token = resolve_token(token)
 
     async def __call__(
         self, scope: Dict[str, Any], receive: Callable, send: Callable,
