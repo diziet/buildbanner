@@ -73,6 +73,11 @@ function _buildStyles(config, positionMode) {
       outline: 2px solid #4da6ff;
       outline-offset: 2px;
       border-radius: 2px;
+    }
+    .bb-wrapper a:focus-visible {
+      outline: 2px solid #4da6ff;
+      outline-offset: 2px;
+      border-radius: 2px;
     }${_buildAnchorCss(".bb-wrapper")}
   `;
 }
