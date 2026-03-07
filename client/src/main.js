@@ -3,11 +3,12 @@
 import { parseConfig, resolveConfig } from "./config.js";
 import { createLogger } from "./logger.js";
 import { fetchBannerData } from "./fetch.js";
-import { createBannerHost, destroyBannerHost } from "./dom.js";
+import { createBannerHost, destroyBannerHost, DEFAULT_HEIGHT } from "./dom.js";
 import { renderSegments } from "./segments.js";
 import { checkTokenWarnings } from "./token-warnings.js";
 import { isDismissed, createDismissButton, resetDismiss } from "./dismiss.js";
 import { startPolling, stopPolling } from "./polling.js";
+import { applyPush, removePush, resolvePositionMode } from "./push.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
@@ -26,7 +27,7 @@ function _clearInstance() {
   window[SYMBOL_KEY] = null;
 }
 
-/** Tear down an instance — clear timers, stop polling, remove DOM. */
+/** Tear down an instance — clear timers, stop polling, remove DOM, restore padding. */
 function _teardown(instance) {
   if (instance.tickerTimerId) {
     clearInterval(instance.tickerTimerId);
@@ -34,6 +35,7 @@ function _teardown(instance) {
   if (instance.pollingState) {
     stopPolling(instance.pollingState);
   }
+  removePush(instance.bannerHeight, instance.pushState, instance.config);
   destroyBannerHost(instance.host, instance.fallbackStyle);
 }
 
@@ -71,8 +73,13 @@ async function init(opts = {}) {
       return;
     }
 
-    const result = createBannerHost(config);
+    const bannerHeight = parseInt(config.height, 10) || DEFAULT_HEIGHT;
+    const pushState = applyPush(config, bannerHeight, logger);
+    const positionMode = resolvePositionMode(pushState.mode);
+
+    const result = createBannerHost(config, positionMode);
     if (!result) {
+      removePush(bannerHeight, pushState, config);
       _clearInstance();
       return;
     }
@@ -80,7 +87,11 @@ async function init(opts = {}) {
     const { host, shadowRoot, wrapper, fallbackStyle } = result;
     const { tickerTimerId } = renderSegments(data, wrapper, config);
 
-    const instance = { host, shadowRoot, wrapper, fallbackStyle, tickerTimerId, pollingState: null, destroyed: false };
+    const instance = {
+      host, shadowRoot, wrapper, fallbackStyle, tickerTimerId,
+      pollingState: null, destroyed: false,
+      pushState, bannerHeight, config,
+    };
 
     if (config.poll > 0) {
       const pollFetchFn = () => fetchBannerData(config.endpoint, { token: config.token, logger });
