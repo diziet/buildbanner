@@ -1,14 +1,11 @@
 """BuildBanner WSGI wrapper — intercepts requests to serve build info."""
 
 import json
-import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
-from buildbanner.core import get_banner_data, resolve_token, validate_token
-
-logger = logging.getLogger(__name__)
-
-DEFAULT_PATH = '/buildbanner.json'
+from buildbanner.core import (
+    DEFAULT_PATH, get_banner_data, resolve_token, validate_token,
+)
 
 
 def buildbanner_wsgi(
@@ -46,6 +43,7 @@ def _handle_banner(
         body = json.dumps({'error': 'Unauthorized'}).encode('utf-8')
         start_response('401 Unauthorized', [
             ('Content-Type', 'application/json'),
+            ('Cache-Control', 'no-store'),
             ('Content-Length', str(len(body))),
         ])
         return [body]

@@ -1,31 +1,32 @@
 """BuildBanner Django adapter — middleware serving build info as JSON."""
 
-import json
-import logging
 from typing import Any, Callable, Dict, Optional
 
-from buildbanner.core import get_banner_data, resolve_token, validate_token
+from buildbanner.core import (
+    DEFAULT_PATH, get_banner_data, resolve_token, validate_token,
+)
 
-logger = logging.getLogger(__name__)
 
-DEFAULT_PATH = '/buildbanner.json'
+def _get_setting(name: str, default: Any = None) -> Any:
+    """Read a Django setting, returning default if not configured."""
+    try:
+        from django.conf import settings
+        return getattr(settings, name, default)
+    except ImportError:
+        return default
 
 
 class BuildBannerMiddleware:
     """Django middleware that serves BuildBanner JSON on a configured path."""
 
-    def __init__(
-        self,
-        get_response: Callable,
-        path: str = DEFAULT_PATH,
-        extras: Optional[Callable[[], Dict[str, Any]]] = None,
-        token: Optional[str] = None,
-    ) -> None:
-        """Initialize middleware with Django's get_response and options."""
+    def __init__(self, get_response: Callable) -> None:
+        """Initialize middleware with Django's get_response callable."""
         self.get_response = get_response
-        self.path = path
-        self.extras = extras
-        self.token = resolve_token(token)
+        self.path = _get_setting('BUILDBANNER_PATH', DEFAULT_PATH)
+        self.extras = _get_setting('BUILDBANNER_EXTRAS')
+        self.token = resolve_token(
+            _get_setting('BUILDBANNER_TOKEN'),
+        )
 
     def __call__(self, request: Any) -> Any:
         """Handle request — intercept matching path or pass through."""
@@ -39,10 +40,12 @@ class BuildBannerMiddleware:
 
         auth_header = request.META.get('HTTP_AUTHORIZATION')
         if not validate_token(auth_header, self.token):
-            return JsonResponse(
+            response = JsonResponse(
                 {'error': 'Unauthorized'},
                 status=401,
             )
+            response['Cache-Control'] = 'no-store'
+            return response
 
         data = get_banner_data(extras=self.extras)
         response = JsonResponse(data, status=200)

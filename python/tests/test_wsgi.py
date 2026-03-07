@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import patch
 
 from tests.conftest import (
-    VALID_TEST_TOKEN, make_git_side_effect, reload_adapter,
+    VALID_TEST_TOKEN, header_to_meta_key,
+    make_git_side_effect, reload_adapter,
 )
 
 
@@ -44,8 +45,7 @@ def _make_environ(
     }
     if headers:
         for key, value in headers.items():
-            meta_key = f'HTTP_{key.upper().replace("-", "_")}'
-            environ[meta_key] = value
+            environ[header_to_meta_key(key)] = value
     return environ
 
 

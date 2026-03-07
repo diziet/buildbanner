@@ -10,7 +10,8 @@ from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory
 
 from tests.conftest import (
-    VALID_TEST_TOKEN, make_git_side_effect, reload_adapter,
+    VALID_TEST_TOKEN, header_to_meta_key,
+    make_git_side_effect, reload_adapter,
 )
 
 # Configure Django settings before any Django imports that need it
@@ -51,8 +52,7 @@ def _make_request(
 
     if headers:
         for key, value in headers.items():
-            meta_key = f'HTTP_{key.upper().replace("-", "_")}'
-            request.META[meta_key] = value
+            request.META[header_to_meta_key(key)] = value
 
     return request
 
@@ -126,11 +126,15 @@ class TestPathInterception:
         data = json.loads(resp.content)
         assert '_buildbanner' in data
 
-    def test_custom_path_works(self):
-        """Custom path serves the endpoint correctly."""
+    def test_custom_path_from_settings(self):
+        """Custom path from Django settings serves the endpoint."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             cls = _reload_django()
-            middleware = cls(_dummy_get_response, path='/custom/info.json')
+            with patch.object(
+                settings, 'BUILDBANNER_PATH', '/custom/info.json',
+                create=True,
+            ):
+                middleware = cls(_dummy_get_response)
 
         request = _make_request('/custom/info.json')
         resp = middleware(request)
@@ -175,9 +179,11 @@ class TestTokenAuth:
         """Valid Bearer token returns 200."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             cls = _reload_django()
-            middleware = cls(
-                _dummy_get_response, token=VALID_TEST_TOKEN,
-            )
+            with patch.object(
+                settings, 'BUILDBANNER_TOKEN', VALID_TEST_TOKEN,
+                create=True,
+            ):
+                middleware = cls(_dummy_get_response)
 
         request = _make_request(
             headers={'Authorization': f'Bearer {VALID_TEST_TOKEN}'},
@@ -190,9 +196,11 @@ class TestTokenAuth:
         """Invalid Bearer token returns 401."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             cls = _reload_django()
-            middleware = cls(
-                _dummy_get_response, token=VALID_TEST_TOKEN,
-            )
+            with patch.object(
+                settings, 'BUILDBANNER_TOKEN', VALID_TEST_TOKEN,
+                create=True,
+            ):
+                middleware = cls(_dummy_get_response)
 
         request = _make_request(
             headers={'Authorization': 'Bearer wrong-token-xxxxxxx'},
@@ -205,9 +213,11 @@ class TestTokenAuth:
         """Missing token header returns 401."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             cls = _reload_django()
-            middleware = cls(
-                _dummy_get_response, token=VALID_TEST_TOKEN,
-            )
+            with patch.object(
+                settings, 'BUILDBANNER_TOKEN', VALID_TEST_TOKEN,
+                create=True,
+            ):
+                middleware = cls(_dummy_get_response)
 
         request = _make_request()
         resp = middleware(request)
@@ -218,9 +228,11 @@ class TestTokenAuth:
         """Short token (<16 chars) disables auth with warning."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             cls = _reload_django()
-            middleware = cls(
-                _dummy_get_response, token='short',
-            )
+            with patch.object(
+                settings, 'BUILDBANNER_TOKEN', 'short',
+                create=True,
+            ):
+                middleware = cls(_dummy_get_response)
 
         request = _make_request()
         with caplog.at_level(logging.WARNING):
