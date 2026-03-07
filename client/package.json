@@ -5,6 +5,7 @@
   "unpkg": "dist/buildbanner.min.js",
   "jsdelivr": "dist/buildbanner.min.js",
   "files": [
+    "buildbanner.js",
     "dist/"
   ],
   "description": "Crash-proof, language-agnostic developer info banner for web apps",
