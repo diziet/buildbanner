@@ -3,6 +3,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { checkTokenWarnings } from "../src/token-warnings.js";
 
+const VALID_TOKEN = "abcdefghijklmnopqrstuvwxyz";
+const SHORT_TOKEN_MSG = "shorter than 16 characters";
+const PUBLIC_ORIGIN_MSG = "public-facing origin";
+
 describe("checkTokenWarnings", () => {
   let warnSpy;
   const originalLocation = window.location;
@@ -34,7 +38,16 @@ describe("checkTokenWarnings", () => {
     checkTokenWarnings({ token: "abc123" });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("shorter than 16 characters"),
+      expect.stringContaining(SHORT_TOKEN_MSG),
+    );
+  });
+
+  it("empty-string token triggers short-token warning", () => {
+    stubLocation("http:", "localhost");
+    checkTokenWarnings({ token: "" });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(SHORT_TOKEN_MSG),
     );
   });
 
@@ -43,70 +56,45 @@ describe("checkTokenWarnings", () => {
     checkTokenWarnings({ token: "abcdefghijklmnop" });
 
     expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("shorter than 16 characters"),
+      expect.stringContaining(SHORT_TOKEN_MSG),
     );
   });
 
   it("HTTPS public hostname with token triggers public warning", () => {
     stubLocation("https:", "myapp.example.com");
-    checkTokenWarnings({ token: "abcdefghijklmnopqrstuvwxyz" });
+    checkTokenWarnings({ token: VALID_TOKEN });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("public-facing origin"),
+      expect.stringContaining(PUBLIC_ORIGIN_MSG),
     );
   });
 
-  it("localhost does not trigger public warning", () => {
-    stubLocation("https:", "localhost");
-    checkTokenWarnings({ token: "abcdefghijklmnopqrstuvwxyz" });
+  it.each([
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+    "myapp.local",
+    "staging.internal",
+    "foo.test",
+    "10.0.1.5",
+    "192.168.1.100",
+    "172.16.0.1",
+    "172.31.255.254",
+  ])("%s does not trigger public warning", (hostname) => {
+    stubLocation("https:", hostname);
+    checkTokenWarnings({ token: VALID_TOKEN });
 
     expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("public-facing origin"),
-    );
-  });
-
-  it("127.0.0.1 does not trigger public warning", () => {
-    stubLocation("https:", "127.0.0.1");
-    checkTokenWarnings({ token: "abcdefghijklmnopqrstuvwxyz" });
-
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("public-facing origin"),
-    );
-  });
-
-  it("myapp.local does not trigger public warning", () => {
-    stubLocation("https:", "myapp.local");
-    checkTokenWarnings({ token: "abcdefghijklmnopqrstuvwxyz" });
-
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("public-facing origin"),
-    );
-  });
-
-  it("staging.internal does not trigger public warning", () => {
-    stubLocation("https:", "staging.internal");
-    checkTokenWarnings({ token: "abcdefghijklmnopqrstuvwxyz" });
-
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("public-facing origin"),
-    );
-  });
-
-  it("foo.test does not trigger public warning", () => {
-    stubLocation("https:", "foo.test");
-    checkTokenWarnings({ token: "abcdefghijklmnopqrstuvwxyz" });
-
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("public-facing origin"),
+      expect.stringContaining(PUBLIC_ORIGIN_MSG),
     );
   });
 
   it("HTTP on public hostname does not trigger public warning", () => {
     stubLocation("http:", "myapp.example.com");
-    checkTokenWarnings({ token: "abcdefghijklmnopqrstuvwxyz" });
+    checkTokenWarnings({ token: VALID_TOKEN });
 
     expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("public-facing origin"),
+      expect.stringContaining(PUBLIC_ORIGIN_MSG),
     );
   });
 
@@ -117,15 +105,22 @@ describe("checkTokenWarnings", () => {
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
+  it("undefined token triggers no warnings", () => {
+    stubLocation("https:", "myapp.example.com");
+    checkTokenWarnings({ token: undefined });
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
   it("both warnings fire simultaneously when applicable", () => {
     stubLocation("https:", "myapp.example.com");
     checkTokenWarnings({ token: "short" });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("shorter than 16 characters"),
+      expect.stringContaining(SHORT_TOKEN_MSG),
     );
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("public-facing origin"),
+      expect.stringContaining(PUBLIC_ORIGIN_MSG),
     );
     expect(warnSpy).toHaveBeenCalledTimes(2);
   });
@@ -134,9 +129,16 @@ describe("checkTokenWarnings", () => {
     stubLocation("https:", "myapp.example.com");
     checkTokenWarnings({ token: "short" });
 
-    // Verify console.warn was called directly (our spy is on console.warn)
     expect(warnSpy).toHaveBeenCalledTimes(2);
-    // The function does not accept or use a logger parameter
     expect(checkTokenWarnings.length).toBe(1);
+  });
+
+  it("never throws even if window.location access fails", () => {
+    Object.defineProperty(window, "location", {
+      get() { throw new Error("no location"); },
+      configurable: true,
+    });
+
+    expect(() => checkTokenWarnings({ token: VALID_TOKEN })).not.toThrow();
   });
 });
