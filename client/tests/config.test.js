@@ -262,4 +262,60 @@ describe("resolveConfig", () => {
     const config = resolveConfig({}, { zIndex: 0 });
     expect(config.zIndex).toBe(0);
   });
+
+  it("normalizes invalid programmatic position to default", () => {
+    const config = resolveConfig({}, { position: "left" });
+    expect(config.position).toBe("top");
+  });
+
+  it("normalizes invalid programmatic theme to default", () => {
+    const config = resolveConfig({}, { theme: "neon" });
+    expect(config.theme).toBe("dark");
+  });
+
+  it("normalizes invalid programmatic dismiss to default", () => {
+    const config = resolveConfig({}, { dismiss: "invalid" });
+    expect(config.dismiss).toBe("session");
+  });
+
+  it("clamps programmatic height to valid range", () => {
+    expect(resolveConfig({}, { height: 10 }).height).toBe(24);
+    expect(resolveConfig({}, { height: 100 }).height).toBe(48);
+    expect(resolveConfig({}, { height: 36 }).height).toBe(36);
+  });
+
+  it("rejects negative programmatic poll", () => {
+    const config = resolveConfig({}, { poll: -5 });
+    expect(config.poll).toBe(0);
+  });
+
+  it("ignores prototype pollution keys", () => {
+    const config = resolveConfig({}, { __proto__: { evil: true }, constructor: "bad", toString: "bad" });
+    expect(config).not.toHaveProperty("evil");
+    expect(config.constructor).not.toBe("bad");
+    expect(config.toString).not.toBe("bad");
+  });
+
+  it("envHide mutation does not corrupt other configs", () => {
+    const envHide = ["production", "staging"];
+    const config1 = resolveConfig({}, { envHide });
+    const config2 = resolveConfig({}, { envHide });
+    config1.envHide.push("test");
+    expect(config2.envHide).toEqual(["production", "staging"]);
+    expect(envHide).toEqual(["production", "staging"]);
+  });
+
+  it("early-return path produces independent hostPatterns arrays", () => {
+    const config1 = resolveConfig({}, null);
+    const config2 = resolveConfig({}, undefined);
+    config1.hostPatterns.push("test");
+    expect(config2.hostPatterns).toEqual([]);
+  });
+
+  it("early-return path produces independent envHide arrays", () => {
+    const config1 = resolveConfig({ envHide: ["prod"] }, null);
+    const config2 = resolveConfig({ envHide: ["prod"] }, null);
+    config1.envHide.push("staging");
+    expect(config2.envHide).toEqual(["prod"]);
+  });
 });
