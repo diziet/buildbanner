@@ -9,6 +9,7 @@ import { checkTokenWarnings } from "./token-warnings.js";
 import { isDismissed, createDismissButton, resetDismiss } from "./dismiss.js";
 import { startPolling, stopPolling } from "./polling.js";
 import { applyPush, removePush, resolvePositionMode } from "./push.js";
+import { shouldHide } from "./env-hide.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
@@ -69,6 +70,17 @@ async function init(opts = {}) {
     });
 
     if (!data) {
+      _clearInstance();
+      return;
+    }
+
+    if (Array.isArray(config.envHide) && config.envHide.length > 0 && !data.environment) {
+      logger.log("envHide is configured but server response has no environment field");
+    }
+
+    if (shouldHide(config.envHide, data.environment)) {
+      logger.log("Banner hidden: environment '" + data.environment + "' is in envHide list");
+      pending.destroyed = true;
       _clearInstance();
       return;
     }
