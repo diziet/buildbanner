@@ -2,6 +2,8 @@
 
 import { formatUptime, formatDeployAge, startUptimeTicker } from "./time.js";
 import { createLink } from "./links.js";
+import { attachCopyHandler } from "./clipboard.js";
+import { createLogger } from "./logger.js";
 
 const STATUS_DOTS = {
   pass: "\u{1F7E2}",
@@ -130,11 +132,15 @@ export function renderSegments(data, wrapper, config = {}) {
     segments.push(_createMaybeLinkedSegment("branch", data.branch, branchLink));
   }
 
-  // 4. sha
+  // 4. sha (with click-to-copy)
   if (data.sha) {
     const shaValue = data.sha_full || data.sha;
     const shaLink = createLink(data.repo_url, "commit", shaValue, hostPatterns);
-    segments.push(_createMaybeLinkedSegment("sha", data.sha, shaLink));
+    const shaEl = _createMaybeLinkedSegment("sha", data.sha, shaLink);
+    shaEl.classList.add("bb-clickable");
+    const logger = createLogger(config.debug);
+    attachCopyHandler(shaEl, shaValue, logger);
+    segments.push(shaEl);
   }
 
   // 5. commit_date (converted to local time)
