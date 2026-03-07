@@ -26,32 +26,36 @@ export const DEFAULT_CONFIG = Object.freeze({
 
 /** Parse a boolean data attribute string. */
 function _parseBool(value, defaultValue) {
-  if (value === null || value === undefined) return defaultValue;
+  if (value == null) return defaultValue;
   const lower = String(value).toLowerCase().trim();
   if (lower === "false" || lower === "0" || lower === "no") return false;
   if (lower === "true" || lower === "1" || lower === "yes" || lower === "") return true;
   return defaultValue;
 }
 
+/** Parse an integer, returning defaultValue when value is missing or non-numeric. */
+function _parseIntOrDefault(value, defaultValue) {
+  if (value == null) return defaultValue;
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed)) return defaultValue;
+  return parsed;
+}
+
 /** Parse and clamp height to valid range. */
 function _parseHeight(value) {
-  if (value === null || value === undefined) return DEFAULT_CONFIG.height;
-  const parsed = parseInt(value, 10);
-  if (Number.isNaN(parsed)) return DEFAULT_CONFIG.height;
+  const parsed = _parseIntOrDefault(value, DEFAULT_CONFIG.height);
   return Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, parsed));
 }
 
 /** Parse poll interval as integer seconds. */
 function _parsePoll(value) {
-  if (value === null || value === undefined) return DEFAULT_CONFIG.poll;
-  const parsed = parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < 0) return DEFAULT_CONFIG.poll;
-  return parsed;
+  const parsed = _parseIntOrDefault(value, DEFAULT_CONFIG.poll);
+  return parsed < 0 ? DEFAULT_CONFIG.poll : parsed;
 }
 
 /** Parse comma-separated list, trimming whitespace. */
 function _parseEnvHide(value) {
-  if (value === null || value === undefined) return null;
+  if (value == null) return null;
   const trimmed = String(value).trim();
   if (trimmed === "") return null;
   return trimmed.split(",").map((s) => s.trim()).filter(Boolean);
@@ -59,7 +63,7 @@ function _parseEnvHide(value) {
 
 /** Validate a string against allowed values, returning default if invalid. */
 function _validateEnum(value, allowed, defaultValue) {
-  if (value === null || value === undefined) return defaultValue;
+  if (value == null) return defaultValue;
   const lower = String(value).toLowerCase().trim();
   return allowed.includes(lower) ? lower : defaultValue;
 }
@@ -87,27 +91,44 @@ export function parseConfig(scriptElement) {
   };
 }
 
+/** Validate and normalize a merged config object. */
+function _validateConfig(config) {
+  config.position = _validateEnum(config.position, VALID_POSITIONS, DEFAULT_CONFIG.position);
+  config.theme = _validateEnum(config.theme, VALID_THEMES, DEFAULT_CONFIG.theme);
+  config.dismiss = _validateEnum(config.dismiss, VALID_DISMISS, DEFAULT_CONFIG.dismiss);
+  config.height = _parseHeight(config.height);
+  config.poll = _parsePoll(config.poll);
+  config.debug = _parseBool(config.debug, DEFAULT_CONFIG.debug);
+  config.push = _parseBool(config.push, DEFAULT_CONFIG.push);
+  config.manual = _parseBool(config.manual, DEFAULT_CONFIG.manual);
+
+  // Defensive copies to prevent shared mutable array references
+  if (Array.isArray(config.hostPatterns)) {
+    config.hostPatterns = [...config.hostPatterns];
+  }
+  if (Array.isArray(config.envHide)) {
+    config.envHide = [...config.envHide];
+  }
+
+  return config;
+}
+
 /** Merge data-attribute config with programmatic options (programmatic wins). */
 export function resolveConfig(dataAttrs, programmaticOpts) {
   const base = { ...DEFAULT_CONFIG, ...dataAttrs };
   if (!programmaticOpts || typeof programmaticOpts !== "object") {
-    return base;
+    return _validateConfig(base);
   }
 
   const merged = { ...base };
 
   for (const key of Object.keys(programmaticOpts)) {
-    if (!(key in DEFAULT_CONFIG)) continue;
+    if (!Object.hasOwn(DEFAULT_CONFIG, key)) continue;
     merged[key] = programmaticOpts[key];
   }
 
   // Normalize endpoint — falsy values fall back to base, matching parseConfig
   if (!merged.endpoint) merged.endpoint = base.endpoint;
 
-  // Defensive copy to prevent shared mutable array references
-  if (Array.isArray(merged.hostPatterns)) {
-    merged.hostPatterns = [...merged.hostPatterns];
-  }
-
-  return merged;
+  return _validateConfig(merged);
 }
