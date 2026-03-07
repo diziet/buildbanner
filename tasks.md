@@ -294,4 +294,12 @@ Create `.github/workflows/ci.yml` with a GitHub Actions workflow. Jobs: (1) **cl
 
 ## Task 38: Time formatting module
 
+Create `client/src/time.js` exporting `formatUptime(serverStartedISO)`, `formatDeployAge(deployedAtISO)`, and `startUptimeTicker(element, serverStartedISO)`.
+
 Create `client/src/time.js` exporting `formatUptime(serverStartedISO)`, `formatDeployAge(deployedAtISO)`, and `startUptimeTicker(element, serverStartedISO)`. `formatUptime` computes elapsed time from `server_started` to now and returns human-readable string (e.g. "up 2h 15m", "up 3d 1h", "up 45s"). `formatDeployAge` computes elapsed time from `deployed_at` to now and returns (e.g. "deployed 3h ago"). `startUptimeTicker` updates the element's `textContent` every 60 seconds (for always-live uptime display without polling). Returns a timer ID for cleanup. Write `client/tests/time.test.js` covering: uptime formats seconds correctly ("up 45s"), uptime formats minutes ("up 12m"), uptime formats hours+minutes ("up 2h 15m"), uptime formats days ("up 3d 1h"), deploy age formats correctly ("deployed 3h ago"), `startUptimeTicker` updates element text after 60 seconds (use `vi.useFakeTimers`), ticker returns clearable timer ID, null `server_started` returns null, null `deployed_at` returns null, both present → both strings returned, ISO 8601 with timezone offset parsed correctly.
+
+---
+
+## Task 39: Rename logger parameter to match spec
+
+In `client/src/logger.js`, rename the `createLogger` parameter from `warnEnabled` to `debugEnabled` to match the Task 5 spec. Update all call sites and tests accordingly.
