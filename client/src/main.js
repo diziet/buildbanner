@@ -4,38 +4,9 @@ import { parseConfig, resolveConfig } from "./config.js";
 import { createLogger } from "./logger.js";
 import { fetchBannerData } from "./fetch.js";
 import { createBannerHost, destroyBannerHost } from "./dom.js";
+import { renderSegments } from "./segments.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
-
-/** Create a data segment span element. */
-function _createSegmentSpan(name, value) {
-  const span = document.createElement("span");
-  span.setAttribute("data-segment", name);
-  span.textContent = value;
-  return span;
-}
-
-/** Render branch and sha as plain spans separated by · */
-function _renderSegments(data, wrapper) {
-  const segments = [];
-
-  if (data.branch !== null && data.branch !== undefined) {
-    segments.push(_createSegmentSpan("branch", data.branch));
-  }
-
-  if (data.sha !== null && data.sha !== undefined) {
-    segments.push(_createSegmentSpan("sha", data.sha));
-  }
-
-  for (let i = 0; i < segments.length; i++) {
-    if (i > 0) {
-      const sep = document.createElement("span");
-      sep.textContent = " \u00B7 ";
-      wrapper.appendChild(sep);
-    }
-    wrapper.appendChild(segments[i]);
-  }
-}
 
 /** Get the singleton instance tracker. */
 function _getInstance() {
@@ -86,9 +57,9 @@ async function init(opts = {}) {
     }
 
     const { host, shadowRoot, wrapper, fallbackStyle } = result;
-    _renderSegments(data, wrapper);
+    const { tickerTimerId } = renderSegments(data, config, wrapper);
 
-    const instance = { host, shadowRoot, wrapper, fallbackStyle, destroyed: false };
+    const instance = { host, shadowRoot, wrapper, fallbackStyle, tickerTimerId, destroyed: false };
     _setInstance(instance);
   } catch (err) {
     _clearInstance();
@@ -101,6 +72,9 @@ function destroy() {
   try {
     const instance = _getInstance();
     if (!instance) return;
+    if (instance.tickerTimerId) {
+      clearInterval(instance.tickerTimerId);
+    }
     destroyBannerHost(instance.host, instance.fallbackStyle);
     instance.destroyed = true;
     _clearInstance();
