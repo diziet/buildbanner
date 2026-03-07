@@ -101,10 +101,18 @@ function _appendSegment(wrapper, segment, isFirst) {
   wrapper.appendChild(segment);
 }
 
+/** Create a segment, wrapping in an anchor if linkUrl is available. */
+function _createMaybeLinkedSegment(segmentName, text, linkUrl) {
+  return linkUrl
+    ? _createLinkedSpan(segmentName, text, linkUrl)
+    : _createSpan(segmentName, text);
+}
+
 /** Render all segments into the wrapper in canonical order. Returns { tickerTimerId }. */
 export function renderSegments(data, wrapper, config = {}) {
   const segments = [];
   let tickerTimerId = null;
+  const hostPatterns = config.hostPatterns || [];
 
   // 1. app_name
   if (data.app_name) {
@@ -118,19 +126,15 @@ export function renderSegments(data, wrapper, config = {}) {
 
   // 3. branch (hidden if HEAD, null, or empty)
   if (!_isBranchHidden(data.branch)) {
-    const branchLink = createLink(data.repo_url, "tree", data.branch, config.hostPatterns || []);
-    segments.push(branchLink
-      ? _createLinkedSpan("branch", data.branch, branchLink)
-      : _createSpan("branch", data.branch));
+    const branchLink = createLink(data.repo_url, "tree", data.branch, hostPatterns);
+    segments.push(_createMaybeLinkedSegment("branch", data.branch, branchLink));
   }
 
   // 4. sha
   if (data.sha) {
     const shaValue = data.sha_full || data.sha;
-    const shaLink = createLink(data.repo_url, "commit", shaValue, config.hostPatterns || []);
-    segments.push(shaLink
-      ? _createLinkedSpan("sha", data.sha, shaLink)
-      : _createSpan("sha", data.sha));
+    const shaLink = createLink(data.repo_url, "commit", shaValue, hostPatterns);
+    segments.push(_createMaybeLinkedSegment("sha", data.sha, shaLink));
   }
 
   // 5. commit_date (converted to local time)

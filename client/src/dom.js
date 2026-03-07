@@ -36,20 +36,25 @@ function _buildWrapperCssProperties(height, zIndex) {
       box-sizing: border-box;`;
 }
 
+/** Build anchor link CSS rules for a given parent selector. */
+function _buildAnchorCss(parentSelector) {
+  return `
+    ${parentSelector} a {
+      color: inherit;
+      text-decoration: none;
+    }
+    ${parentSelector} a:hover {
+      text-decoration: underline;
+    }`;
+}
+
 /** Generate shadow DOM stylesheet for the banner. */
 function _buildStyles(config) {
   const { height, zIndex } = _resolveStyleValues(config);
 
   return `
     .bb-wrapper {${_buildWrapperCssProperties(height, zIndex)}
-    }
-    .bb-wrapper a {
-      color: inherit;
-      text-decoration: none;
-    }
-    .bb-wrapper a:hover {
-      text-decoration: underline;
-    }
+    }${_buildAnchorCss(".bb-wrapper")}
   `;
 }
 
@@ -73,14 +78,7 @@ function _buildFallbackStyles(config) {
       visibility: visible;
       opacity: 1;
       direction: ltr;
-    }
-    .__buildbanner-wrapper a {
-      color: inherit;
-      text-decoration: none;
-    }
-    .__buildbanner-wrapper a:hover {
-      text-decoration: underline;
-    }
+    }${_buildAnchorCss(".__buildbanner-wrapper")}
   `;
 }
 

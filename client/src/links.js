@@ -14,10 +14,12 @@ function _findPattern(hostname, hostPatterns) {
   return BUILTIN_HOSTS[hostname] || null;
 }
 
+const TEMPLATE_MAP = { commit: "commitPath", tree: "treePath" };
+
 /** Build a full URL from repo_url, path template, and value. */
 function _buildUrl(repoUrl, template, value) {
-  const placeholder = template.includes("{sha}") ? "{sha}" : "{branch}";
-  const path = template.replace(placeholder, encodeURIComponent(value));
+  const encoded = encodeURIComponent(value);
+  const path = template.replace("{sha}", encoded).replace("{branch}", encoded);
   return repoUrl.replace(/\/+$/, "") + path;
 }
 
@@ -27,6 +29,10 @@ function _buildUrl(repoUrl, template, value) {
  */
 export function createLink(repoUrl, type, value, hostPatterns = []) {
   if (!repoUrl || !value) return null;
+  if (!Array.isArray(hostPatterns)) return null;
+
+  const templateKey = TEMPLATE_MAP[type];
+  if (!templateKey) return null;
 
   let hostname;
   try {
@@ -38,7 +44,7 @@ export function createLink(repoUrl, type, value, hostPatterns = []) {
   const pattern = _findPattern(hostname, hostPatterns);
   if (!pattern) return null;
 
-  const template = type === "commit" ? pattern.commitPath : pattern.treePath;
+  const template = pattern[templateKey];
   if (!template) return null;
 
   return _buildUrl(repoUrl, template, value);
