@@ -2,5 +2,6 @@
 'use strict';
 
 const { buildBannerMiddleware } = require('./server');
+const { buildBannerKoa } = require('./koa');
 
-module.exports = { buildBannerMiddleware };
+module.exports = { buildBannerMiddleware, buildBannerKoa };
