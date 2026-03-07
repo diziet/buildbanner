@@ -9,6 +9,7 @@ import { checkTokenWarnings } from "./token-warnings.js";
 import { isDismissed, createDismissButton, resetDismiss } from "./dismiss.js";
 import { startPolling, stopPolling } from "./polling.js";
 import { applyPush, removePush, resolvePositionMode } from "./push.js";
+import { shouldHide } from "./env-hide.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
@@ -69,6 +70,12 @@ async function init(opts = {}) {
     });
 
     if (!data) {
+      _clearInstance();
+      return;
+    }
+
+    if (shouldHide(config.envHide, data.environment)) {
+      pending.destroyed = true;
       _clearInstance();
       return;
     }
