@@ -37,22 +37,31 @@ describe("BuildBanner lifecycle", () => {
     document.body.innerHTML = "";
   });
 
-  /** Helper: init banner with default data. */
+  /** Helper: init banner with given data. */
   async function initBanner(data = DEFAULT_DATA) {
     mockFetch.mockResolvedValue(mockResponse(data));
     await BuildBanner.init({ endpoint: "/buildbanner.json" });
   }
 
+  /** Helper: get the banner host element. */
+  function getHost() {
+    return document.querySelector("[data-testid='buildbanner']");
+  }
+
+  /** Helper: get text content of a segment inside shadow DOM. */
+  function segmentText(host, name) {
+    return host.shadowRoot.querySelector(`[data-segment='${name}']`).textContent;
+  }
+
   it("refresh() re-fetches and updates segments", async () => {
     await initBanner();
-    const host = document.querySelector("[data-testid='buildbanner']");
-    expect(host.shadowRoot.querySelector("[data-segment='sha']").textContent).toBe("a1b2c3d");
+    expect(segmentText(getHost(), "sha")).toBe("a1b2c3d");
 
     mockFetch.mockResolvedValue(mockResponse({ sha: "newsha1", branch: "dev" }));
     await BuildBanner.refresh();
 
-    expect(host.shadowRoot.querySelector("[data-segment='sha']").textContent).toBe("newsha1");
-    expect(host.shadowRoot.querySelector("[data-segment='branch']").textContent).toBe("dev");
+    expect(segmentText(getHost(), "sha")).toBe("newsha1");
+    expect(segmentText(getHost(), "branch")).toBe("dev");
   });
 
   it("refresh() with endpoint failure keeps last data", async () => {
@@ -61,8 +70,7 @@ describe("BuildBanner lifecycle", () => {
     mockFetch.mockResolvedValue(mockResponse(null, { status: 500 }));
     await BuildBanner.refresh();
 
-    const host = document.querySelector("[data-testid='buildbanner']");
-    expect(host.shadowRoot.querySelector("[data-segment='sha']").textContent).toBe("a1b2c3d");
+    expect(segmentText(getHost(), "sha")).toBe("a1b2c3d");
   });
 
   it("update({ custom: { model: 'new' } }) merges into current state", async () => {
@@ -70,10 +78,8 @@ describe("BuildBanner lifecycle", () => {
 
     BuildBanner.update({ custom: { model: "new" } });
 
-    const host = document.querySelector("[data-testid='buildbanner']");
-    const shadow = host.shadowRoot;
-    expect(shadow.querySelector("[data-segment='custom-model']").textContent).toBe("new");
-    expect(shadow.querySelector("[data-segment='custom-region']").textContent).toBe("us-east");
+    expect(segmentText(getHost(), "custom-model")).toBe("new");
+    expect(segmentText(getHost(), "custom-region")).toBe("us-east");
   });
 
   it("update() re-renders without fetch", async () => {
@@ -83,8 +89,7 @@ describe("BuildBanner lifecycle", () => {
     BuildBanner.update({ branch: "feature" });
 
     expect(mockFetch).not.toHaveBeenCalled();
-    const host = document.querySelector("[data-testid='buildbanner']");
-    expect(host.shadowRoot.querySelector("[data-segment='branch']").textContent).toBe("feature");
+    expect(segmentText(getHost(), "branch")).toBe("feature");
   });
 
   it("update() with partial custom merges (does not replace entire custom map)", async () => {
@@ -92,11 +97,9 @@ describe("BuildBanner lifecycle", () => {
 
     BuildBanner.update({ custom: { newkey: "val" } });
 
-    const host = document.querySelector("[data-testid='buildbanner']");
-    const shadow = host.shadowRoot;
-    expect(shadow.querySelector("[data-segment='custom-model']").textContent).toBe("gpt-4");
-    expect(shadow.querySelector("[data-segment='custom-region']").textContent).toBe("us-east");
-    expect(shadow.querySelector("[data-segment='custom-newkey']").textContent).toBe("val");
+    expect(segmentText(getHost(), "custom-model")).toBe("gpt-4");
+    expect(segmentText(getHost(), "custom-region")).toBe("us-east");
+    expect(segmentText(getHost(), "custom-newkey")).toBe("val");
   });
 
   it("update() of status fields re-renders status dots", async () => {
@@ -107,14 +110,10 @@ describe("BuildBanner lifecycle", () => {
     };
     await initBanner(dataWithStatus);
 
-    const host = document.querySelector("[data-testid='buildbanner']");
-    const getTestsText = () =>
-      host.shadowRoot.querySelector("[data-segment='tests']").textContent;
-
-    expect(getTestsText()).toContain("100 passed");
+    expect(segmentText(getHost(), "tests")).toContain("100 passed");
 
     BuildBanner.update({ tests: { status: "fail", summary: "3 failed" } });
-    expect(getTestsText()).toContain("3 failed");
+    expect(segmentText(getHost(), "tests")).toContain("3 failed");
   });
 
   it("methods become no-ops after destroy (no error thrown)", async () => {
@@ -130,14 +129,13 @@ describe("BuildBanner lifecycle", () => {
   it("init() after destroy creates new instance", async () => {
     await initBanner();
     BuildBanner.destroy();
-    expect(document.querySelector("[data-testid='buildbanner']")).toBeNull();
+    expect(getHost()).toBeNull();
 
     mockFetch.mockResolvedValue(mockResponse({ sha: "newsha2", branch: "feat" }));
     await BuildBanner.init({ endpoint: "/buildbanner.json" });
 
-    const host = document.querySelector("[data-testid='buildbanner']");
-    expect(host).not.toBeNull();
-    expect(host.shadowRoot.querySelector("[data-segment='sha']").textContent).toBe("newsha2");
+    expect(getHost()).not.toBeNull();
+    expect(segmentText(getHost(), "sha")).toBe("newsha2");
     expect(BuildBanner.isVisible()).toBe(true);
   });
 
@@ -148,9 +146,8 @@ describe("BuildBanner lifecycle", () => {
 
     BuildBanner.update({ branch: "updated-branch" });
 
-    const host = document.querySelector("[data-testid='buildbanner']");
-    expect(host.shadowRoot.querySelector("[data-segment='branch']").textContent).toBe("updated-branch");
-    expect(host.shadowRoot.querySelector("[data-segment='sha']").textContent).toBe("poll123");
+    expect(segmentText(getHost(), "branch")).toBe("updated-branch");
+    expect(segmentText(getHost(), "sha")).toBe("poll123");
   });
 
   it("refresh() after destroy is a no-op", async () => {
@@ -161,6 +158,6 @@ describe("BuildBanner lifecycle", () => {
     await BuildBanner.refresh();
 
     expect(mockFetch).not.toHaveBeenCalled();
-    expect(document.querySelector("[data-testid='buildbanner']")).toBeNull();
+    expect(getHost()).toBeNull();
   });
 });

@@ -18,6 +18,13 @@ function _getInstance() {
   return window[SYMBOL_KEY];
 }
 
+/** Get the active (non-destroyed) instance, or null. */
+function _getActiveInstance() {
+  const instance = _getInstance();
+  if (!instance || instance.destroyed) return null;
+  return instance;
+}
+
 /** Set the singleton instance tracker. */
 function _setInstance(instance) {
   window[SYMBOL_KEY] = instance;
@@ -146,8 +153,8 @@ function _rerender(instance) {
 /** Trigger a manual re-fetch and update segments. */
 async function refresh() {
   try {
-    const instance = _getInstance();
-    if (!instance || instance.destroyed || instance.pending) return;
+    const instance = _getActiveInstance();
+    if (!instance) return;
 
     const logger = createLogger(instance.config.debug);
     const newData = await fetchBannerData(instance.config.endpoint, {
@@ -159,16 +166,20 @@ async function refresh() {
     if (!newData) return;
     instance.data = newData;
     _rerender(instance);
-  } catch {
-    /* Never throw. */
+  } catch (err) {
+    console.debug("[BuildBanner] refresh failed:", err);
   }
 }
 
-/** Merge partial data into current state and re-render without fetching. */
+/**
+ * Merge partial data into current state and re-render without fetching.
+ * Top-level fields are replaced; `custom` is merged key-by-key per spec
+ * so callers can update individual custom fields without losing others.
+ */
 function update(partialData) {
   try {
-    const instance = _getInstance();
-    if (!instance || instance.destroyed || instance.pending) return;
+    const instance = _getActiveInstance();
+    if (!instance || !instance.data) return;
     if (!partialData || typeof partialData !== "object") return;
 
     if (partialData.custom && instance.data.custom) {
@@ -179,8 +190,8 @@ function update(partialData) {
     }
     instance.data = { ...instance.data, ...partialData };
     _rerender(instance);
-  } catch {
-    /* Never throw. */
+  } catch (err) {
+    console.debug("[BuildBanner] update failed:", err);
   }
 }
 
@@ -194,31 +205,28 @@ function destroy() {
     instance.destroyed = true;
     _clearInstance();
     _disableMethods();
-  } catch {
-    /* Never throw. */
+  } catch (err) {
+    console.debug("[BuildBanner] destroy failed:", err);
   }
 }
 
 /** Check if the banner is currently visible. */
 function isVisible() {
   try {
-    const instance = _getInstance();
-    return Boolean(instance && !instance.destroyed && !instance.pending);
+    return Boolean(_getActiveInstance());
   } catch {
     return false;
   }
 }
 
+const ORIGINAL_METHODS = { init, destroy, refresh, update, isVisible };
+
 /** Replace all public methods with no-ops except init (which re-enables). */
 function _disableMethods() {
-  const noop = () => {};
-  const noopAsync = () => Promise.resolve();
-  const noopFalse = () => false;
-
-  BuildBanner.destroy = noop;
-  BuildBanner.refresh = noopAsync;
-  BuildBanner.update = noop;
-  BuildBanner.isVisible = noopFalse;
+  BuildBanner.destroy = () => {};
+  BuildBanner.refresh = () => Promise.resolve();
+  BuildBanner.update = () => {};
+  BuildBanner.isVisible = () => false;
   BuildBanner.init = function restoreAndInit(opts) {
     _restoreMethods();
     return init(opts);
@@ -227,11 +235,7 @@ function _disableMethods() {
 
 /** Restore original methods on the public API. */
 function _restoreMethods() {
-  BuildBanner.init = init;
-  BuildBanner.destroy = destroy;
-  BuildBanner.refresh = refresh;
-  BuildBanner.update = update;
-  BuildBanner.isVisible = isVisible;
+  Object.assign(BuildBanner, ORIGINAL_METHODS);
 }
 
 /** Auto-detect script tag and initialize on DOMContentLoaded. */
@@ -261,8 +265,14 @@ if (typeof document !== "undefined") {
   }
 }
 
-/** Public API exposed as window.BuildBanner. */
-const BuildBanner = { init, destroy, refresh, update, isVisible };
+/**
+ * Public API exposed as window.BuildBanner.
+ * Note: the no-op-after-destroy guard via _disableMethods() only applies to
+ * consumers using `window.BuildBanner` or the default export. ES module named
+ * imports hold direct references to the original functions; those are guarded
+ * by the internal _getActiveInstance() check instead.
+ */
+const BuildBanner = { ...ORIGINAL_METHODS };
 
 if (typeof window !== "undefined") {
   window.BuildBanner = BuildBanner;
