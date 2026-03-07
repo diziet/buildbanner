@@ -3,12 +3,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Hono } from 'hono';
 import { buildBannerHono } from '../hono.js';
 import {
+  DEFAULT_PATH,
   FAKE_SHA,
   FAKE_SHA_FULL,
   FAKE_BRANCH,
   FAKE_TOKEN,
-  FAKE_BANNER_DATA,
   fakeCreateBanner,
+  throwingCreateBanner,
+  withEnvOverrides,
 } from './helpers/fixtures.js';
 
 /** Create a Hono app with the middleware and an extra test route. */
@@ -23,16 +25,6 @@ function createApp(options = {}) {
   return app;
 }
 
-/** Create a factory where getBannerData throws. */
-function throwingCreateBanner() {
-  return () => ({
-    getBannerData: () => {
-      throw new Error('unexpected failure');
-    },
-    checkAuth: () => ({ authorized: true }),
-  });
-}
-
 /** Helper to make a request against a Hono app. */
 function req(app, method, path, headers = {}) {
   const url = `http://localhost${path}`;
@@ -43,7 +35,7 @@ function req(app, method, path, headers = {}) {
 describe('Hono middleware — happy path', () => {
   it('returns 200 with valid JSON on default path', async () => {
     const app = createApp();
-    const res = await req(app, 'GET', '/buildbanner.json');
+    const res = await req(app, 'GET', DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -58,14 +50,14 @@ describe('Hono middleware — happy path', () => {
 describe('Hono middleware — response headers', () => {
   it('sets Cache-Control: no-store', async () => {
     const app = createApp();
-    const res = await req(app, 'GET', '/buildbanner.json');
+    const res = await req(app, 'GET', DEFAULT_PATH);
 
     expect(res.headers.get('cache-control')).toBe('no-store');
   });
 
   it('sets Content-Type: application/json', async () => {
     const app = createApp();
-    const res = await req(app, 'GET', '/buildbanner.json');
+    const res = await req(app, 'GET', DEFAULT_PATH);
 
     expect(res.headers.get('content-type')).toMatch(/application\/json/);
   });
@@ -83,32 +75,20 @@ describe('Hono middleware — passthrough', () => {
 
   it('calls next() for non-GET methods on the banner path', async () => {
     const app = createApp();
-    const res = await req(app, 'POST', '/buildbanner.json');
+    const res = await req(app, 'POST', DEFAULT_PATH);
 
     expect(res.status).not.toBe(200);
   });
 });
 
 describe('Hono middleware — env var overrides (via core)', () => {
-  const savedEnv = {};
+  const envHelper = withEnvOverrides([
+    'BUILDBANNER_SHA',
+    'BUILDBANNER_BRANCH',
+  ]);
 
-  beforeEach(() => {
-    savedEnv.BUILDBANNER_SHA = process.env.BUILDBANNER_SHA;
-    savedEnv.BUILDBANNER_BRANCH = process.env.BUILDBANNER_BRANCH;
-  });
-
-  afterEach(() => {
-    if (savedEnv.BUILDBANNER_SHA === undefined) {
-      delete process.env.BUILDBANNER_SHA;
-    } else {
-      process.env.BUILDBANNER_SHA = savedEnv.BUILDBANNER_SHA;
-    }
-    if (savedEnv.BUILDBANNER_BRANCH === undefined) {
-      delete process.env.BUILDBANNER_BRANCH;
-    } else {
-      process.env.BUILDBANNER_BRANCH = savedEnv.BUILDBANNER_BRANCH;
-    }
-  });
+  beforeEach(() => envHelper.save());
+  afterEach(() => envHelper.restore());
 
   it('env vars override git values when using real core', async () => {
     process.env.BUILDBANNER_SHA = 'ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00';
@@ -116,7 +96,7 @@ describe('Hono middleware — env var overrides (via core)', () => {
 
     const app = new Hono();
     app.use('*', buildBannerHono());
-    const res = await req(app, 'GET', '/buildbanner.json');
+    const res = await req(app, 'GET', DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -130,7 +110,7 @@ describe('Hono middleware — extras callback', () => {
     const app = createApp({
       extras: () => ({ uptime: 42 }),
     });
-    const res = await req(app, 'GET', '/buildbanner.json');
+    const res = await req(app, 'GET', DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -143,7 +123,7 @@ describe('Hono middleware — extras callback', () => {
         throw new Error('boom');
       },
     });
-    const res = await req(app, 'GET', '/buildbanner.json');
+    const res = await req(app, 'GET', DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -153,20 +133,23 @@ describe('Hono middleware — extras callback', () => {
 });
 
 describe('Hono middleware — BUILDBANNER_CUSTOM_* env vars', () => {
+  const envHelper = withEnvOverrides([
+    'BUILDBANNER_CUSTOM_TEAM',
+    'BUILDBANNER_CUSTOM_REGION',
+  ]);
+
   beforeEach(() => {
+    envHelper.save();
     process.env.BUILDBANNER_CUSTOM_TEAM = 'platform';
     process.env.BUILDBANNER_CUSTOM_REGION = 'us-east-1';
   });
 
-  afterEach(() => {
-    delete process.env.BUILDBANNER_CUSTOM_TEAM;
-    delete process.env.BUILDBANNER_CUSTOM_REGION;
-  });
+  afterEach(() => envHelper.restore());
 
   it('populates custom map from env vars', async () => {
     const app = new Hono();
     app.use('*', buildBannerHono());
-    const res = await req(app, 'GET', '/buildbanner.json');
+    const res = await req(app, 'GET', DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -179,7 +162,7 @@ describe('Hono middleware — BUILDBANNER_CUSTOM_* env vars', () => {
 describe('Hono middleware — token auth', () => {
   it('returns 401 when token configured and header missing', async () => {
     const app = createApp({ token: FAKE_TOKEN });
-    const res = await req(app, 'GET', '/buildbanner.json');
+    const res = await req(app, 'GET', DEFAULT_PATH);
 
     expect(res.status).toBe(401);
     const body = await res.json();
@@ -188,7 +171,7 @@ describe('Hono middleware — token auth', () => {
 
   it('returns 401 when token configured and header is wrong', async () => {
     const app = createApp({ token: FAKE_TOKEN });
-    const res = await req(app, 'GET', '/buildbanner.json', {
+    const res = await req(app, 'GET', DEFAULT_PATH, {
       Authorization: 'Bearer wrong-token',
     });
 
@@ -197,7 +180,7 @@ describe('Hono middleware — token auth', () => {
 
   it('returns 200 when token configured and header is correct', async () => {
     const app = createApp({ token: FAKE_TOKEN });
-    const res = await req(app, 'GET', '/buildbanner.json', {
+    const res = await req(app, 'GET', DEFAULT_PATH, {
       Authorization: `Bearer ${FAKE_TOKEN}`,
     });
 
@@ -208,7 +191,7 @@ describe('Hono middleware — token auth', () => {
 
   it('returns 200 when no token configured', async () => {
     const app = createApp();
-    const res = await req(app, 'GET', '/buildbanner.json');
+    const res = await req(app, 'GET', DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -220,7 +203,7 @@ describe('Hono middleware — internal error handling', () => {
   it('returns 500 with generic message when getBannerData throws', async () => {
     const app = new Hono();
     app.use('*', buildBannerHono({ _createBanner: throwingCreateBanner() }));
-    const res = await req(app, 'GET', '/buildbanner.json');
+    const res = await req(app, 'GET', DEFAULT_PATH);
 
     expect(res.status).toBe(500);
     const body = await res.json();

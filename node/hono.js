@@ -16,7 +16,7 @@ function buildBannerHono(options = {}) {
   const { servePath, banner } = createMiddlewareCore(options);
 
   return async function buildBannerHandler(c, next) {
-    if (c.req.method !== 'GET' || new URL(c.req.url).pathname !== servePath) {
+    if (c.req.method !== 'GET' || c.req.path !== servePath) {
       await next();
       return;
     }
@@ -30,7 +30,8 @@ function buildBannerHono(options = {}) {
       const data = banner.getBannerData();
       c.header('Cache-Control', 'no-store');
       return c.json(data, 200);
-    } catch {
+    } catch (err) {
+      console.error('BuildBanner Hono middleware error:', err);
       return c.json({ error: 'Internal server error' }, 500);
     }
   };

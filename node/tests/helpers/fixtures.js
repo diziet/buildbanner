@@ -1,5 +1,6 @@
 /** Shared test fixtures for BuildBanner middleware tests. */
 
+export const DEFAULT_PATH = '/buildbanner.json';
 export const FAKE_SHA = 'a1b2c3d';
 export const FAKE_SHA_FULL = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
 export const FAKE_BRANCH = 'main';
@@ -38,4 +39,36 @@ export function fakeCreateBanner(token = null) {
       return { authorized: header.slice('Bearer '.length) === token };
     },
   });
+}
+
+/** Create a factory where getBannerData always throws. */
+export function throwingCreateBanner() {
+  return () => ({
+    getBannerData: () => {
+      throw new Error('unexpected failure');
+    },
+    checkAuth: () => ({ authorized: true }),
+  });
+}
+
+/** Save and restore env vars around tests. */
+export function withEnvOverrides(varNames) {
+  const saved = {};
+
+  return {
+    save() {
+      for (const name of varNames) {
+        saved[name] = process.env[name];
+      }
+    },
+    restore() {
+      for (const name of varNames) {
+        if (saved[name] === undefined) {
+          delete process.env[name];
+        } else {
+          process.env[name] = saved[name];
+        }
+      }
+    },
+  };
 }
