@@ -110,8 +110,38 @@ function _createMaybeLinkedSegment(segmentName, text, linkUrl) {
     : _createSpan(segmentName, text);
 }
 
+/** Check if status value changed from previous, updating tracker. */
+function _hasStatusChanged(field, newStatus, previousStatuses) {
+  const current = newStatus && newStatus.status ? newStatus.status : null;
+  const isFirstTrack = !(field in previousStatuses);
+  const prev = previousStatuses[field];
+  previousStatuses[field] = current;
+  if (isFirstTrack) return true;
+  return prev !== current;
+}
+
+/** Build the status container div, with ARIA live attrs only when isLive is true. */
+function _buildStatusContainer(testsSegment, buildSegment, isLive) {
+  const container = document.createElement("div");
+  container.className = "bb-live-region";
+  container.setAttribute("data-bb-live-region", "");
+  if (isLive) {
+    container.setAttribute("role", "status");
+    container.setAttribute("aria-live", "polite");
+  }
+  let isFirst = true;
+  if (testsSegment) {
+    _appendSegment(container, testsSegment, isFirst);
+    isFirst = false;
+  }
+  if (buildSegment) {
+    _appendSegment(container, buildSegment, isFirst);
+  }
+  return container;
+}
+
 /** Render all segments into the wrapper in canonical order. Returns { tickerTimerId }. */
-export function renderSegments(data, wrapper, config = {}) {
+export function renderSegments(data, wrapper, config = {}, previousStatuses = {}) {
   const segments = [];
   let tickerTimerId = null;
   const hostPatterns = config.hostPatterns || [];
@@ -162,15 +192,16 @@ export function renderSegments(data, wrapper, config = {}) {
     segments.push(_createSpan("deploy-age", deployAgeStr));
   }
 
-  // 7. tests then build status
+  // 7. tests then build status — wrapped in ARIA live region
   const testsSegment = _createStatusSegment("tests", data.tests);
-  if (testsSegment) {
-    segments.push(testsSegment);
-  }
-
   const buildSegment = _createStatusSegment("build", data.build);
-  if (buildSegment) {
-    segments.push(buildSegment);
+  const hasStatusSegments = testsSegment || buildSegment;
+
+  if (hasStatusSegments) {
+    const testsChanged = _hasStatusChanged("tests", data.tests, previousStatuses);
+    const buildChanged = _hasStatusChanged("build", data.build, previousStatuses);
+    const isLive = testsChanged || buildChanged;
+    segments.push(_buildStatusContainer(testsSegment, buildSegment, isLive));
   }
 
   // 8. port

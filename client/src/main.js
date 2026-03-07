@@ -97,7 +97,8 @@ async function init(opts = {}) {
     }
 
     const { host, shadowRoot, wrapper, fallbackStyle } = result;
-    const { tickerTimerId } = renderSegments(data, wrapper, config);
+    const previousStatuses = {};
+    const { tickerTimerId } = renderSegments(data, wrapper, config, previousStatuses);
 
     const instance = {
       host, shadowRoot, wrapper, fallbackStyle, tickerTimerId,
@@ -112,7 +113,7 @@ async function init(opts = {}) {
           clearInterval(instance.tickerTimerId);
         }
         wrapper.textContent = "";
-        const rendered = renderSegments(newData, wrapper, config);
+        const rendered = renderSegments(newData, wrapper, config, previousStatuses);
         instance.tickerTimerId = rendered.tickerTimerId;
       };
       instance.pollingState = startPolling(config, pollFetchFn, pollOnData, logger);
