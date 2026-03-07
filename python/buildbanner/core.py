@@ -134,10 +134,29 @@ def _apply_env_overrides(
     return info
 
 
+def _read_env_config() -> Dict[str, Any]:
+    """Snapshot env-based config values at module load time."""
+    port_str = os.environ.get('BUILDBANNER_PORT')
+    port = None
+    if port_str:
+        try:
+            port = int(port_str)
+        except ValueError:
+            port = None
+
+    return {
+        'deployed_at': os.environ.get('BUILDBANNER_DEPLOYED_AT'),
+        'app_name': os.environ.get('BUILDBANNER_APP_NAME'),
+        'environment': os.environ.get('BUILDBANNER_ENVIRONMENT'),
+        'port': port,
+    }
+
+
 # Module-level cached state — computed once at import time
 _git_info = _read_git_info()
 _static_info = _apply_env_overrides(_git_info)
 _custom_env = _read_custom_env()
+_env_config = _read_env_config()
 _server_started = datetime.now(timezone.utc).isoformat()
 
 
@@ -178,17 +197,6 @@ def _build_banner_data(
     extras: Optional[Callable[[], Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Internal builder for banner data."""
-    deployed_at = os.environ.get('BUILDBANNER_DEPLOYED_AT')
-    app_name = os.environ.get('BUILDBANNER_APP_NAME')
-    environment = os.environ.get('BUILDBANNER_ENVIRONMENT')
-    port_str = os.environ.get('BUILDBANNER_PORT')
-    port = None
-    if port_str:
-        try:
-            port = int(port_str)
-        except ValueError:
-            port = None
-
     data: Dict[str, Any] = {
         '_buildbanner': {'version': 1},
         'sha': _static_info.get('sha'),
@@ -197,10 +205,10 @@ def _build_banner_data(
         'commit_date': _static_info.get('commit_date'),
         'repo_url': sanitize_repo_url(_static_info.get('repo_url')),
         'server_started': _server_started,
-        'deployed_at': deployed_at,
-        'app_name': app_name,
-        'environment': environment,
-        'port': port,
+        'deployed_at': _env_config.get('deployed_at'),
+        'app_name': _env_config.get('app_name'),
+        'environment': _env_config.get('environment'),
+        'port': _env_config.get('port'),
     }
 
     custom = dict(_custom_env) if _custom_env else None

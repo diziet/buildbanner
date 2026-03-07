@@ -23,7 +23,7 @@ FIXTURES = _load_fixtures()
 
 
 def _make_git_side_effect(
-    log_output='abc1234567890abcdef1234567890abcdef12345678 abc1234 2026-01-15T10:30:00+00:00',
+    log_output='a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2 a1b2c3d 2026-01-15T10:30:00+00:00',
     branch_output='main',
     tag_output=None,
     remote_output='https://github.com/org/repo.git',
