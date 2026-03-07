@@ -57,7 +57,7 @@ async function init(opts = {}) {
     }
 
     const { host, shadowRoot, wrapper, fallbackStyle } = result;
-    const { tickerTimerId } = renderSegments(data, wrapper);
+    const { tickerTimerId } = renderSegments(data, wrapper, config);
 
     const instance = { host, shadowRoot, wrapper, fallbackStyle, tickerTimerId, destroyed: false };
     _setInstance(instance);

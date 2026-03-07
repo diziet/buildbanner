@@ -43,6 +43,13 @@ function _buildStyles(config) {
   return `
     .bb-wrapper {${_buildWrapperCssProperties(height, zIndex)}
     }
+    .bb-wrapper a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .bb-wrapper a:hover {
+      text-decoration: underline;
+    }
   `;
 }
 
@@ -66,6 +73,13 @@ function _buildFallbackStyles(config) {
       visibility: visible;
       opacity: 1;
       direction: ltr;
+    }
+    .__buildbanner-wrapper a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .__buildbanner-wrapper a:hover {
+      text-decoration: underline;
     }
   `;
 }
