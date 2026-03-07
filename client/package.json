@@ -2,9 +2,14 @@
   "name": "buildbanner",
   "version": "0.1.0",
   "main": "buildbanner.js",
+  "unpkg": "dist/buildbanner.min.js",
+  "jsdelivr": "dist/buildbanner.min.js",
+  "files": [
+    "dist/"
+  ],
   "description": "Crash-proof, language-agnostic developer info banner for web apps",
   "scripts": {
-    "build": "esbuild buildbanner.js --bundle --format=iife --target=es2017 --outfile=dist/buildbanner.min.js --minify && esbuild buildbanner.js --bundle --format=iife --target=es2017 --outfile=dist/buildbanner.js",
+    "build": "esbuild buildbanner.js --bundle --format=iife --target=es2017 --outfile=dist/buildbanner.min.js --minify && esbuild buildbanner.js --bundle --format=iife --target=es2017 --outfile=dist/buildbanner.js && node scripts/build-css.js",
     "size": "npm run build && node scripts/check-size.js",
     "test": "vitest run"
   },
