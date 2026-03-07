@@ -25,6 +25,7 @@ async function createServer(fixture, opts = {}) {
     });
   } else {
     const fakeBanner = _createFakeBanner(() => currentFixture);
+    _verifyBannerHook(fakeBanner);
     app.use(buildBannerMiddleware({ _createBanner: () => fakeBanner }));
   }
 
@@ -46,16 +47,32 @@ async function createServer(fixture, opts = {}) {
   });
 }
 
+/** Verify the _createBanner hook produces the expected interface. */
+function _verifyBannerHook(banner) {
+  if (typeof banner.getBannerData !== 'function') {
+    throw new Error('_createBanner hook failed: getBannerData is not a function');
+  }
+  if (typeof banner.checkAuth !== 'function') {
+    throw new Error('_createBanner hook failed: checkAuth is not a function');
+  }
+}
+
 /** Create a fake banner object that returns dynamic fixture data. */
 function _createFakeBanner(getFixture) {
+  const serverStarted = new Date().toISOString();
   return {
     getBannerData: () => ({
       _buildbanner: { version: 1 },
-      server_started: new Date().toISOString(),
       ...getFixture(),
+      server_started: serverStarted,
     }),
     checkAuth: () => ({ authorized: true }),
   };
+}
+
+/** Close an HTTP server and return a promise. */
+async function closeServer(srv) {
+  return new Promise((resolve) => srv.close(resolve));
 }
 
 /** Build minimal HTML page with BuildBanner script tag. */
@@ -70,4 +87,4 @@ function _buildHtml(pollAttr, envHideAttr) {
 </html>`;
 }
 
-module.exports = { createServer };
+module.exports = { createServer, closeServer };
