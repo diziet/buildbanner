@@ -16,7 +16,7 @@ describe("createLogger", () => {
     expect(debugSpy).toHaveBeenCalledOnce();
   });
 
-  it("log() calls console.warn only when warnEnabled is true", () => {
+  it("log() calls console.warn only when debugEnabled is true", () => {
     vi.spyOn(console, "debug").mockImplementation(() => {});
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
