@@ -1,5 +1,7 @@
 """BuildBanner Python server helpers for Flask, Django, FastAPI, and WSGI."""
 
+__version__ = '0.1.0'
+
 
 def __getattr__(name: str):
     """Lazy import adapters to avoid hard framework dependencies."""
