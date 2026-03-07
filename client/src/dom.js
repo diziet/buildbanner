@@ -1,6 +1,7 @@
 /** DOM module — creates and destroys the banner host element. */
 
 import { createLogger } from "./logger.js";
+import { getThemeStyles } from "./theme.js";
 
 const FONT_STACK = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace';
 export const DEFAULT_HEIGHT = 28;
@@ -32,8 +33,8 @@ function _buildWrapperCssProperties(height, zIndex, positionMode = "sticky") {
       font-family: ${FONT_STACK};
       font-size: 12px;
       line-height: ${height}px;
-      color: #e0e0e0;
-      background: #1a1a1a;
+      color: var(--bb-fg, #e0e0e0);
+      background: var(--bb-bg, #1a1a2e);
       padding: 0 8px;
       box-sizing: border-box;`;
 }
@@ -42,7 +43,7 @@ function _buildWrapperCssProperties(height, zIndex, positionMode = "sticky") {
 function _buildAnchorCss(parentSelector) {
   return `
     ${parentSelector} a {
-      color: inherit;
+      color: var(--bb-link, inherit);
       text-decoration: none;
     }
     ${parentSelector} a:hover {
@@ -53,8 +54,9 @@ function _buildAnchorCss(parentSelector) {
 /** Generate shadow DOM stylesheet for the banner. */
 function _buildStyles(config, positionMode) {
   const { height, zIndex } = _resolveStyleValues(config);
+  const theme = config.theme || "dark";
 
-  return `
+  return `${getThemeStyles(theme)}
     .bb-wrapper {${_buildWrapperCssProperties(height, zIndex, positionMode)}
     }
     .bb-clickable {
