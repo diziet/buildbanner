@@ -2,8 +2,8 @@
 const { readFileSync } = require("node:fs");
 const { gzipSync } = require("node:zlib");
 
-// Increased from 5632 for push.js module added in Task 17
-const BUDGET_BYTES = 6144;
+// Increased from 6144 for env-hide.js module added in Task 19
+const BUDGET_BYTES = 6400;
 
 /** Return the gzipped byte size of a file. */
 function getGzippedSize(filePath) {

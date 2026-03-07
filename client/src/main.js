@@ -74,7 +74,12 @@ async function init(opts = {}) {
       return;
     }
 
+    if (Array.isArray(config.envHide) && config.envHide.length > 0 && !data.environment) {
+      logger.log("envHide is configured but server response has no environment field");
+    }
+
     if (shouldHide(config.envHide, data.environment)) {
+      logger.log("Banner hidden: environment '" + data.environment + "' is in envHide list");
       pending.destroyed = true;
       _clearInstance();
       return;

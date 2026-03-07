@@ -41,6 +41,10 @@ describe("shouldHide", () => {
   it("returns false when envHideList is an empty array", () => {
     expect(shouldHide([], "production")).toBe(false);
   });
+
+  it("returns false when envHideList is a plain string instead of array", () => {
+    expect(shouldHide("production", "production")).toBe(false);
+  });
 });
 
 describe("env-hide integration", () => {
@@ -105,5 +109,37 @@ describe("env-hide integration", () => {
 
     const host = document.querySelector("[data-testid='buildbanner']");
     expect(host).not.toBeNull();
+  });
+
+  it("logs debug message when banner is hidden by env-hide", async () => {
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+    const payload = { sha: "a1b2c3d", branch: "main", environment: "production" };
+    mockFetch.mockResolvedValue(mockResponse(payload));
+
+    await BuildBanner.init({
+      endpoint: "/buildbanner.json",
+      envHide: ["production"],
+    });
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Banner hidden"),
+    );
+    debugSpy.mockRestore();
+  });
+
+  it("logs debug message when envHide configured but environment missing from response", async () => {
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+    const payload = { sha: "a1b2c3d", branch: "main" };
+    mockFetch.mockResolvedValue(mockResponse(payload));
+
+    await BuildBanner.init({
+      endpoint: "/buildbanner.json",
+      envHide: ["production"],
+    });
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      expect.stringContaining("no environment field"),
+    );
+    debugSpy.mockRestore();
   });
 });
