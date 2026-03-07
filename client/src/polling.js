@@ -16,17 +16,15 @@ export function startPolling(config, fetchFn, onData, logger) {
 
   const _tick = async () => {
     try {
-      const data = await fetchFn({ isRefetch: true });
+      const data = await fetchFn();
       if (data) {
         state.currentInterval = baseInterval;
         onData(data);
       } else {
-        _backoff(state, baseInterval);
-        if (logger) logger.log(`Poll failed, backing off to ${state.currentInterval}s`);
+        _handleFailure(state, logger, "Poll failed");
       }
-    } catch {
-      _backoff(state, baseInterval);
-      if (logger) logger.log(`Poll error, backing off to ${state.currentInterval}s`);
+    } catch (err) {
+      _handleFailure(state, logger, `Poll error: ${err.message}`);
     }
 
     if (!state.stopped) {
@@ -65,8 +63,14 @@ export function stopPolling(state) {
   }
 }
 
+/** Apply backoff and log failure reason. */
+function _handleFailure(state, logger, reason) {
+  _backoff(state);
+  if (logger) logger.log(`${reason}, backing off to ${state.currentInterval}s`);
+}
+
 /** Double the current interval, capped at MAX_INTERVAL_SEC. */
-function _backoff(state, baseInterval) {
+function _backoff(state) {
   const doubled = state.currentInterval * 2;
   state.currentInterval = Math.min(doubled, MAX_INTERVAL_SEC);
 }
