@@ -50,12 +50,19 @@ describe("monorepo scaffold", () => {
   });
 
   describe("root package.json", () => {
+    const pkg = readJson("package.json");
+
     it("has correct workspaces", () => {
-      const pkg = readJson("package.json");
       expect(pkg.name).toBe("buildbanner-monorepo");
       expect(pkg.private).toBe(true);
       expect(pkg.workspaces).toContain("client/");
       expect(pkg.workspaces).toContain("node/");
+    });
+
+    it("has test dependencies as devDependencies", () => {
+      expect(pkg.devDependencies).toHaveProperty("vitest");
+      expect(pkg.devDependencies).toHaveProperty("ajv");
+      expect(pkg.devDependencies).toHaveProperty("ajv-formats");
     });
   });
 
