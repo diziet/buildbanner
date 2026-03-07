@@ -4,12 +4,41 @@ import express from 'express';
 import request from 'supertest';
 import { buildBannerMiddleware } from '../server.js';
 
+const FAKE_SHA = 'a1b2c3d';
+const FAKE_SHA_FULL = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
+const FAKE_BRANCH = 'main';
 const FAKE_TOKEN = 'abcdefghijklmnop';
+
+const FAKE_BANNER_DATA = {
+  _buildbanner: { version: 1 },
+  sha: FAKE_SHA,
+  sha_full: FAKE_SHA_FULL,
+  branch: FAKE_BRANCH,
+  server_started: '2026-02-13T14:25:00.000Z',
+};
+
+/** Create a fake createBanner factory with optional token auth. */
+function fakeCreateBanner(token = null) {
+  return () => ({
+    getBannerData: () => ({ ...FAKE_BANNER_DATA }),
+    checkAuth: (header) => {
+      if (!token) return { authorized: true };
+      if (!header || !header.startsWith('Bearer ')) {
+        return { authorized: false };
+      }
+      return { authorized: header.slice('Bearer '.length) === token };
+    },
+  });
+}
 
 /** Create an Express app with the middleware and an extra test route. */
 function createApp(options = {}) {
+  const mergedOptions = {
+    _createBanner: fakeCreateBanner(options.token),
+    ...options,
+  };
   const app = express();
-  app.use(buildBannerMiddleware(options));
+  app.use(buildBannerMiddleware(mergedOptions));
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
@@ -23,8 +52,9 @@ describe('Express middleware — happy path', () => {
 
     expect(res.status).toBe(200);
     expect(res.body._buildbanner).toEqual({ version: 1 });
-    expect(typeof res.body.sha).toBe('string');
-    expect(res.body.sha).toHaveLength(7);
+    expect(res.body.sha).toBe(FAKE_SHA);
+    expect(res.body.sha_full).toBe(FAKE_SHA_FULL);
+    expect(res.body.branch).toBe(FAKE_BRANCH);
     expect(typeof res.body.server_started).toBe('string');
   });
 });
@@ -102,6 +132,14 @@ describe('Express middleware — token auth', () => {
     const res = await request(app)
       .get('/buildbanner.json')
       .set('Authorization', `Bearer ${FAKE_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body._buildbanner).toEqual({ version: 1 });
+  });
+
+  it('returns 200 when no token configured', async () => {
+    const app = createApp();
+    const res = await request(app).get('/buildbanner.json');
 
     expect(res.status).toBe(200);
     expect(res.body._buildbanner).toEqual({ version: 1 });

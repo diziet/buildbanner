@@ -11,11 +11,13 @@ const DEFAULT_PATH = '/buildbanner.json';
  * @param {string} [options.path] - URL path to serve (default: /buildbanner.json).
  * @param {string} [options.token] - Auth token for endpoint protection.
  * @param {Function} [options.extras] - Callback returning dynamic fields.
+ * @param {Function} [options._createBanner] - Override for testing (do not use in production).
  * @returns {Function} Express middleware (req, res, next).
  */
 function buildBannerMiddleware(options = {}) {
   const servePath = options.path || DEFAULT_PATH;
-  const banner = createBanner({
+  const factory = options._createBanner || createBanner;
+  const banner = factory({
     token: options.token,
     extras: options.extras,
   });
@@ -25,16 +27,19 @@ function buildBannerMiddleware(options = {}) {
       return next();
     }
 
-    const authResult = banner.checkAuth(req.headers.authorization);
-    if (!authResult.authorized) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    try {
+      const authResult = banner.checkAuth(req.headers.authorization);
+      if (!authResult.authorized) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
 
-    const data = banner.getBannerData();
-    res.set('Cache-Control', 'no-store');
-    res.set('Content-Type', 'application/json');
-    res.json(data);
+      const data = banner.getBannerData();
+      res.set('Cache-Control', 'no-store');
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
   };
 }
 
