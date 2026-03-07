@@ -5,7 +5,7 @@ const childProcess = require('child_process');
 const crypto = require('crypto');
 
 const SHORT_SHA_LEN = 7;
-const FULL_SHA_LEN = 40;
+const MIN_SHA_FULL_LEN = 8;
 const MIN_TOKEN_LEN = 16;
 
 // Mutable reference for testing — tests can replace _exec to mock git calls.
@@ -125,7 +125,7 @@ function _applyEnvOverrides(gitInfo) {
   if (process.env.BUILDBANNER_SHA) {
     const envSha = process.env.BUILDBANNER_SHA;
     info.sha = envSha.slice(0, SHORT_SHA_LEN);
-    if (envSha.length >= FULL_SHA_LEN) {
+    if (envSha.length >= MIN_SHA_FULL_LEN) {
       info.shaFull = envSha;
     }
   }

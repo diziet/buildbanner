@@ -137,9 +137,17 @@ describe('core — env var overrides', () => {
     expect(data.commit_date).toBe('2026-03-01T00:00:00Z');
   });
 
-  it('short env SHA (<40 chars) does not set sha_full', () => {
+  it('env SHA with 8+ chars also sets sha_full', () => {
     mockGitFail();
     setEnv({ BUILDBANNER_SHA: 'aabbccddee112233' });
+    const data = createBanner().getBannerData();
+    expect(data.sha).toBe('aabbccd');
+    expect(data.sha_full).toBe('aabbccddee112233');
+  });
+
+  it('env SHA with <8 chars does not set sha_full', () => {
+    mockGitFail();
+    setEnv({ BUILDBANNER_SHA: 'aabbccd' });
     const data = createBanner().getBannerData();
     expect(data.sha).toBe('aabbccd');
     expect(data).not.toHaveProperty('sha_full');
