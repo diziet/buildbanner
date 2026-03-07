@@ -8,34 +8,13 @@ export const LIGHT_FG = "#333333";
 const DARK_LINK = "#6fa8dc";
 const LIGHT_LINK = "#1a5dab";
 
-const FONT_FAMILY =
+export const FONT_FAMILY =
   'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace';
-const FONT_SIZE = "12px";
+export const FONT_SIZE = "12px";
 
 /** Build CSS variable declarations for a color scheme. */
 function _colorVars(bg, fg, link) {
   return `--bb-bg: ${bg}; --bb-fg: ${fg}; --bb-link: ${link};`;
-}
-
-/** CSS block that applies the color variables to the wrapper. */
-function _applyVars() {
-  return `
-    .bb-wrapper {
-      background: var(--bb-bg);
-      color: var(--bb-fg);
-    }
-    .bb-wrapper a {
-      color: var(--bb-link);
-    }`;
-}
-
-/** Base typography shared by all themes. */
-function _baseTypography() {
-  return `
-    .bb-wrapper {
-      font-family: ${FONT_FAMILY};
-      font-size: ${FONT_SIZE};
-    }`;
 }
 
 /**
@@ -44,17 +23,15 @@ function _baseTypography() {
  * @returns {string}
  */
 export function getThemeStyles(theme) {
-  const base = _baseTypography();
-
   if (theme === "light") {
-    return `${base}
+    return `
     :host {
       ${_colorVars(LIGHT_BG, LIGHT_FG, LIGHT_LINK)}
-    }${_applyVars()}`;
+    }`;
   }
 
   if (theme === "auto") {
-    return `${base}
+    return `
     :host {
       ${_colorVars(DARK_BG, DARK_FG, DARK_LINK)}
     }
@@ -62,12 +39,12 @@ export function getThemeStyles(theme) {
       :host {
         ${_colorVars(LIGHT_BG, LIGHT_FG, LIGHT_LINK)}
       }
-    }${_applyVars()}`;
+    }`;
   }
 
   // Default: dark
-  return `${base}
+  return `
     :host {
       ${_colorVars(DARK_BG, DARK_FG, DARK_LINK)}
-    }${_applyVars()}`;
+    }`;
 }

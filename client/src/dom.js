@@ -1,9 +1,7 @@
 /** DOM module — creates and destroys the banner host element. */
 
 import { createLogger } from "./logger.js";
-import { getThemeStyles } from "./theme.js";
-
-const FONT_STACK = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace';
+import { getThemeStyles, FONT_FAMILY, FONT_SIZE, DARK_BG, DARK_FG } from "./theme.js";
 export const DEFAULT_HEIGHT = 28;
 const DEFAULT_Z_INDEX = 999999;
 const VALID_POSITION_MODES = ["sticky", "fixed"];
@@ -30,11 +28,11 @@ function _buildWrapperCssProperties(height, zIndex, positionMode = "sticky") {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-family: ${FONT_STACK};
-      font-size: 12px;
+      font-family: ${FONT_FAMILY};
+      font-size: ${FONT_SIZE};
       line-height: ${height}px;
-      color: var(--bb-fg, #e0e0e0);
-      background: var(--bb-bg, #1a1a2e);
+      color: var(--bb-fg, ${DARK_FG});
+      background: var(--bb-bg, ${DARK_BG});
       padding: 0 8px;
       box-sizing: border-box;`;
 }
@@ -43,7 +41,7 @@ function _buildWrapperCssProperties(height, zIndex, positionMode = "sticky") {
 function _buildAnchorCss(parentSelector) {
   return `
     ${parentSelector} a {
-      color: var(--bb-link, inherit);
+      color: var(--bb-link);
       text-decoration: none;
     }
     ${parentSelector} a:hover {

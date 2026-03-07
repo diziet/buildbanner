@@ -38,6 +38,12 @@ function contrastRatio(hex1, hex2) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+/** Reset DOM state between tests. */
+function cleanupDom() {
+  document.body.innerHTML = "";
+  document.head.querySelectorAll("style").forEach((s) => s.remove());
+}
+
 describe("theme module", () => {
   describe("getThemeStyles", () => {
     it("dark theme applies dark background", () => {
@@ -72,9 +78,7 @@ describe("theme module", () => {
     });
 
     it("default theme is dark", () => {
-      const darkCss = getThemeStyles("dark");
       const defaultCss = getThemeStyles("unknown");
-      // Both should contain dark colors and no light overrides
       expect(defaultCss).toContain(DARK_BG);
       expect(defaultCss).not.toContain("prefers-color-scheme");
     });
@@ -88,20 +92,12 @@ describe("theme module", () => {
       }
     });
 
-    it("all themes include monospace font-family", () => {
-      for (const theme of ["dark", "light", "auto"]) {
-        const css = getThemeStyles(theme);
-        expect(css).toContain("ui-monospace");
-        expect(css).toContain("Consolas");
-        expect(css).toContain("monospace");
-      }
-    });
-
-    it("all themes include 12px font-size", () => {
-      for (const theme of ["dark", "light", "auto"]) {
-        const css = getThemeStyles(theme);
-        expect(css).toContain("12px");
-      }
+    it("exports shared font constants", () => {
+      const { FONT_FAMILY, FONT_SIZE } = require("../src/theme.js");
+      expect(FONT_FAMILY).toContain("ui-monospace");
+      expect(FONT_FAMILY).toContain("Consolas");
+      expect(FONT_FAMILY).toContain("monospace");
+      expect(FONT_SIZE).toBe("12px");
     });
   });
 
@@ -118,19 +114,13 @@ describe("theme module", () => {
   });
 
   describe("DOM integration", () => {
-    beforeEach(() => {
-      document.body.innerHTML = "";
-      document.head.querySelectorAll("style").forEach((s) => s.remove());
-    });
-
-    afterEach(() => {
-      document.body.innerHTML = "";
-      document.head.querySelectorAll("style").forEach((s) => s.remove());
-    });
+    beforeEach(cleanupDom);
+    afterEach(cleanupDom);
 
     it("dark theme config injects dark colors into shadow style", () => {
       const { shadowRoot, host } = createBannerHost({ theme: "dark" });
       const style = shadowRoot.querySelector("style");
+      expect(style).not.toBeNull();
       expect(style.textContent).toContain(DARK_BG);
       destroyBannerHost(host);
     });
@@ -138,6 +128,7 @@ describe("theme module", () => {
     it("light theme config injects light colors into shadow style", () => {
       const { shadowRoot, host } = createBannerHost({ theme: "light" });
       const style = shadowRoot.querySelector("style");
+      expect(style).not.toBeNull();
       expect(style.textContent).toContain(LIGHT_BG);
       destroyBannerHost(host);
     });
@@ -145,6 +136,7 @@ describe("theme module", () => {
     it("auto theme config includes prefers-color-scheme in shadow style", () => {
       const { shadowRoot, host } = createBannerHost({ theme: "auto" });
       const style = shadowRoot.querySelector("style");
+      expect(style).not.toBeNull();
       expect(style.textContent).toContain("prefers-color-scheme");
       destroyBannerHost(host);
     });
@@ -152,8 +144,33 @@ describe("theme module", () => {
     it("default config uses dark theme", () => {
       const { shadowRoot, host } = createBannerHost({});
       const style = shadowRoot.querySelector("style");
+      expect(style).not.toBeNull();
       expect(style.textContent).toContain(DARK_BG);
       destroyBannerHost(host);
+    });
+
+    it("all themes include monospace font-family in stylesheet", () => {
+      for (const theme of ["dark", "light", "auto"]) {
+        cleanupDom();
+        const { shadowRoot, host } = createBannerHost({ theme });
+        const style = shadowRoot.querySelector("style");
+        expect(style).not.toBeNull();
+        expect(style.textContent).toContain("ui-monospace");
+        expect(style.textContent).toContain("Consolas");
+        expect(style.textContent).toContain("monospace");
+        destroyBannerHost(host);
+      }
+    });
+
+    it("all themes include 12px font-size in stylesheet", () => {
+      for (const theme of ["dark", "light", "auto"]) {
+        cleanupDom();
+        const { shadowRoot, host } = createBannerHost({ theme });
+        const style = shadowRoot.querySelector("style");
+        expect(style).not.toBeNull();
+        expect(style.textContent).toContain("12px");
+        destroyBannerHost(host);
+      }
     });
   });
 });
