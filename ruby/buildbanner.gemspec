@@ -6,5 +6,5 @@ Gem::Specification.new do |s|
   s.authors     = ["BuildBanner Contributors"]
   s.files       = Dir["lib/**/*.rb"]
   s.require_paths = ["lib"]
-  s.required_ruby_version = ">= 2.6"
+  s.required_ruby_version = ">= 2.7"
 end

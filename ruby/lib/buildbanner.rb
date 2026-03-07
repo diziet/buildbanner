@@ -13,6 +13,12 @@ module BuildBanner
   MIN_TOKEN_LEN = 16
   DEFAULT_PATH = '/buildbanner.json'
 
+  # Keys that extras callbacks cannot overwrite.
+  PROTECTED_KEYS = %w[
+    _buildbanner sha sha_full branch commit_date
+    repo_url server_started
+  ].freeze
+
   # Rack middleware that serves BuildBanner JSON with git info.
   class Middleware
     attr_reader :serve_path
@@ -24,24 +30,33 @@ module BuildBanner
       @logger = options[:logger] || Logger.new($stderr)
       @token = _resolve_token(options[:token])
       @auth_enabled = false
+      @git_info = {}
+      @static_info = {}
+      @custom_env = nil
+      @env_config = { deployed_at: nil, app_name: nil, environment: nil, port: nil }
+      @server_started = Time.now.utc.iso8601
 
       @git_info = _read_git_info
       @static_info = _apply_env_overrides(@git_info)
       @custom_env = _read_custom_env
       @env_config = _read_env_config
-      @server_started = Time.now.utc.iso8601
 
       _configure_auth
     rescue StandardError => e
       @logger.error("BuildBanner: init failed: #{e}")
-      @app = app
       @auth_enabled = false
     end
 
     def call(env)
       return @app.call(env) unless _matches_request?(env)
 
-      _serve_banner(env)
+      # Auth check runs outside the data-building rescue so that auth
+      # failures are never swallowed into a 200 fallback.
+      unless _check_auth(env)
+        return _json_response(401, { 'error' => 'Unauthorized' })
+      end
+
+      _serve_banner
     rescue StandardError => e
       @logger.error("BuildBanner: request failed: #{e}")
       _json_response(200, { '_buildbanner' => { 'version' => 1 } })
@@ -54,11 +69,7 @@ module BuildBanner
         env['PATH_INFO'] == @serve_path
     end
 
-    def _serve_banner(env)
-      unless _check_auth(env)
-        return _json_response(401, { 'error' => 'Unauthorized' })
-      end
-
+    def _serve_banner
       data = _build_banner_data
       _json_response(200, data)
     end
@@ -104,7 +115,7 @@ module BuildBanner
       header = env['HTTP_AUTHORIZATION']
       return false unless header&.start_with?('Bearer ')
 
-      provided = header[7..]
+      provided = header.sub('Bearer ', '')
       _safe_compare(provided, @token)
     end
 
@@ -127,7 +138,7 @@ module BuildBanner
       commit_date = nil
 
       log_line = _run_git(
-        %w[git log -1 --format=%H\ %cd --date=iso-strict]
+        ['git', 'log', '-1', '--format=%H %cd', '--date=iso-strict']
       )
       if log_line
         parts = log_line.split(' ', 2)
@@ -159,7 +170,11 @@ module BuildBanner
       env_sha = ENV['BUILDBANNER_SHA']
       if env_sha && !env_sha.empty?
         info[:sha] = env_sha[0, SHORT_SHA_LEN]
-        info[:sha_full] = env_sha if env_sha.length >= MIN_SHA_FULL_LEN
+        if env_sha.length >= MIN_SHA_FULL_LEN
+          info[:sha_full] = env_sha
+        else
+          info[:sha_full] = nil
+        end
       end
 
       env_branch = ENV['BUILDBANNER_BRANCH']
@@ -181,7 +196,7 @@ module BuildBanner
       ENV.each do |key, value|
         next unless key.start_with?(prefix) && key.length > prefix.length
 
-        suffix = key[prefix.length..].downcase
+        suffix = key[prefix.length..-1].downcase
         custom[suffix] = value.to_s if value
       end
 
@@ -189,25 +204,21 @@ module BuildBanner
     end
 
     def _read_env_config
-      port_str = ENV['BUILDBANNER_PORT']
-      port = nil
-      if port_str && !port_str.empty?
-        port = Integer(port_str, 10)
-      end
-
-      {
-        deployed_at: ENV['BUILDBANNER_DEPLOYED_AT'],
-        app_name: ENV['BUILDBANNER_APP_NAME'],
-        environment: ENV['BUILDBANNER_ENVIRONMENT'],
-        port: port,
-      }
-    rescue ArgumentError
-      {
+      config = {
         deployed_at: ENV['BUILDBANNER_DEPLOYED_AT'],
         app_name: ENV['BUILDBANNER_APP_NAME'],
         environment: ENV['BUILDBANNER_ENVIRONMENT'],
         port: nil,
       }
+      port_str = ENV['BUILDBANNER_PORT']
+      if port_str && !port_str.empty?
+        begin
+          config[:port] = Integer(port_str, 10)
+        rescue ArgumentError
+          @logger.warn("BuildBanner: invalid BUILDBANNER_PORT=#{port_str.inspect}, ignoring")
+        end
+      end
+      config
     end
 
     def _sanitize_url(raw_url)
@@ -258,8 +269,8 @@ module BuildBanner
       custom = _apply_extras(data, custom)
       data['custom'] = _clean_custom(custom) if custom && !custom.empty?
 
-      # Remove nil top-level fields (except _buildbanner)
-      data.reject! { |k, v| v.nil? && k != '_buildbanner' }
+      # Remove nil top-level fields
+      data.reject! { |_, v| v.nil? }
 
       data
     end
@@ -279,7 +290,7 @@ module BuildBanner
 
             custom[ck.to_s] = cv.to_s
           end
-        elsif key_s != '_buildbanner'
+        elsif !PROTECTED_KEYS.include?(key_s)
           data[key_s] = value
         end
       end

@@ -9,6 +9,14 @@ require_relative '../lib/buildbanner'
 FIXTURES_PATH = File.join(__dir__, '..', '..', 'shared', 'test_fixtures.json')
 FIXTURES = JSON.parse(File.read(FIXTURES_PATH))
 
+# Default git stub responses keyed by command regex.
+DEFAULT_GIT_STUBS = {
+  /git log/ => ['abc1234567890abcdef1234567890abcdef123456 2026-01-15T10:30:00+00:00', true],
+  /git rev-parse --abbrev-ref HEAD/ => ["main\n", true],
+  /git describe --tags/ => ['', false],
+  /git remote get-url origin/ => ["https://github.com/org/repo.git\n", true],
+}.freeze
+
 RSpec.describe BuildBanner::Middleware do
   include Rack::Test::Methods
 
@@ -16,24 +24,31 @@ RSpec.describe BuildBanner::Middleware do
   let(:options) { {} }
   let(:app) { described_class.new(inner_app, options) }
 
-  # Stub all git subprocess calls by default.
-  before do
+  # Helper: stub Open3.capture2 with optional overrides per git command.
+  # Overrides are checked first so more-specific patterns win.
+  def stub_git(overrides = {})
     allow(Open3).to receive(:capture2) do |*args|
       cmd = args.flatten.join(' ')
-      case cmd
-      when /git log/
-        ['abc1234567890abcdef1234567890abcdef123456 2026-01-15T10:30:00+00:00', double(success?: true)]
-      when /git rev-parse --abbrev-ref HEAD/
-        ["main\n", double(success?: true)]
-      when /git describe --tags/
-        ['', double(success?: false)]
-      when /git remote get-url origin/
-        ["https://github.com/org/repo.git\n", double(success?: true)]
+      # Check overrides first, then fall back to defaults.
+      match = overrides.find { |pattern, _| cmd.match?(pattern) }
+      match ||= DEFAULT_GIT_STUBS.find { |pattern, _| cmd.match?(pattern) }
+      if match
+        output, success = match[1]
+        [output, double(success?: success)]
       else
         ['', double(success?: false)]
       end
     end
   end
+
+  # Helper: build a fresh middleware + test session with given options.
+  def build_app(opts = {})
+    mw = described_class.new(inner_app, opts)
+    Rack::Test::Session.new(Rack::MockSession.new(mw))
+  end
+
+  # Stub all git subprocess calls by default.
+  before { stub_git }
 
   after do
     # Clean up env vars after each test.
@@ -118,26 +133,14 @@ RSpec.describe BuildBanner::Middleware do
       expected = fixture['expected']
 
       it "sanitizes #{input.inspect} to #{expected.inspect}" do
-        allow(Open3).to receive(:capture2) do |*args|
-          cmd = args.flatten.join(' ')
-          case cmd
-          when /git log/
-            ['abc1234567890abcdef1234567890abcdef123456 2026-01-15T10:30:00+00:00', double(success?: true)]
-          when /git rev-parse --abbrev-ref HEAD/
-            ["main\n", double(success?: true)]
-          when /git remote get-url origin/
-            if input.nil? || input.empty?
-              ['', double(success?: false)]
-            else
-              ["#{input}\n", double(success?: true)]
-            end
-          else
-            ['', double(success?: false)]
-          end
-        end
+        origin_response = if input.nil? || input.empty?
+                            ['', false]
+                          else
+                            ["#{input}\n", true]
+                          end
+        stub_git(/git remote get-url origin/ => origin_response)
 
-        middleware = described_class.new(inner_app, options)
-        test_app = Rack::Test::Session.new(Rack::MockSession.new(middleware))
+        test_app = build_app
         test_app.get('/buildbanner.json')
         body = JSON.parse(test_app.last_response.body)
 
@@ -148,24 +151,12 @@ RSpec.describe BuildBanner::Middleware do
 
   describe 'detached HEAD with tag' do
     it 'uses tag as branch' do
-      allow(Open3).to receive(:capture2) do |*args|
-        cmd = args.flatten.join(' ')
-        case cmd
-        when /git log/
-          ['abc1234567890abcdef1234567890abcdef123456 2026-01-15T10:30:00+00:00', double(success?: true)]
-        when /git rev-parse --abbrev-ref HEAD/
-          ["HEAD\n", double(success?: true)]
-        when /git describe --tags --exact-match/
-          ["v1.2.3\n", double(success?: true)]
-        when /git remote get-url origin/
-          ["https://github.com/org/repo.git\n", double(success?: true)]
-        else
-          ['', double(success?: false)]
-        end
-      end
+      stub_git(
+        /git rev-parse --abbrev-ref HEAD/ => ["HEAD\n", true],
+        /git describe --tags --exact-match/ => ["v1.2.3\n", true]
+      )
 
-      middleware = described_class.new(inner_app)
-      test_app = Rack::Test::Session.new(Rack::MockSession.new(middleware))
+      test_app = build_app
       test_app.get('/buildbanner.json')
       body = JSON.parse(test_app.last_response.body)
       expect(body['branch']).to eq('v1.2.3')
@@ -174,24 +165,12 @@ RSpec.describe BuildBanner::Middleware do
 
   describe 'detached HEAD without tag' do
     it 'returns nil branch' do
-      allow(Open3).to receive(:capture2) do |*args|
-        cmd = args.flatten.join(' ')
-        case cmd
-        when /git log/
-          ['abc1234567890abcdef1234567890abcdef123456 2026-01-15T10:30:00+00:00', double(success?: true)]
-        when /git rev-parse --abbrev-ref HEAD/
-          ["HEAD\n", double(success?: true)]
-        when /git describe --tags/
-          ['', double(success?: false)]
-        when /git remote get-url origin/
-          ["https://github.com/org/repo.git\n", double(success?: true)]
-        else
-          ['', double(success?: false)]
-        end
-      end
+      stub_git(
+        /git rev-parse --abbrev-ref HEAD/ => ["HEAD\n", true],
+        /git describe --tags/ => ['', false]
+      )
 
-      middleware = described_class.new(inner_app)
-      test_app = Rack::Test::Session.new(Rack::MockSession.new(middleware))
+      test_app = build_app
       test_app.get('/buildbanner.json')
       body = JSON.parse(test_app.last_response.body)
       expect(body).not_to have_key('branch')
@@ -200,9 +179,7 @@ RSpec.describe BuildBanner::Middleware do
 
   describe 'extras lambda' do
     it 'merges extras into response' do
-      opts = { extras: -> { { 'deploy_id' => 'abc-123', 'custom' => { 'region' => 'us-east-1' } } } }
-      middleware = described_class.new(inner_app, opts)
-      test_app = Rack::Test::Session.new(Rack::MockSession.new(middleware))
+      test_app = build_app(extras: -> { { 'deploy_id' => 'abc-123', 'custom' => { 'region' => 'us-east-1' } } })
       test_app.get('/buildbanner.json')
       body = JSON.parse(test_app.last_response.body)
 
@@ -211,22 +188,28 @@ RSpec.describe BuildBanner::Middleware do
     end
 
     it 'omits extras when lambda raises' do
-      opts = { extras: -> { raise 'boom' } }
-      middleware = described_class.new(inner_app, opts)
-      test_app = Rack::Test::Session.new(Rack::MockSession.new(middleware))
+      test_app = build_app(extras: -> { raise 'boom' })
       test_app.get('/buildbanner.json')
       body = JSON.parse(test_app.last_response.body)
 
       expect(body['_buildbanner']['version']).to eq(1)
       expect(body).not_to have_key('deploy_id')
     end
+
+    it 'cannot overwrite protected keys like sha' do
+      test_app = build_app(extras: -> { { 'sha' => 'evil', 'server_started' => 'evil' } })
+      test_app.get('/buildbanner.json')
+      body = JSON.parse(test_app.last_response.body)
+
+      expect(body['sha']).to eq('abc1234')
+      expect(body['server_started']).not_to eq('evil')
+    end
   end
 
   describe 'custom value stringification' do
     it 'converts integer to string via .to_s' do
       ENV['BUILDBANNER_CUSTOM_WORKERS'] = '42'
-      middleware = described_class.new(inner_app)
-      test_app = Rack::Test::Session.new(Rack::MockSession.new(middleware))
+      test_app = build_app
       test_app.get('/buildbanner.json')
       body = JSON.parse(test_app.last_response.body)
 
@@ -237,9 +220,7 @@ RSpec.describe BuildBanner::Middleware do
 
   describe 'custom nil omitted' do
     it 'does not include custom keys with nil values from extras' do
-      opts = { extras: -> { { 'custom' => { 'present' => 'yes', 'absent' => nil } } } }
-      middleware = described_class.new(inner_app, opts)
-      test_app = Rack::Test::Session.new(Rack::MockSession.new(middleware))
+      test_app = build_app(extras: -> { { 'custom' => { 'present' => 'yes', 'absent' => nil } } })
       test_app.get('/buildbanner.json')
       body = JSON.parse(test_app.last_response.body)
 
@@ -252,15 +233,13 @@ RSpec.describe BuildBanner::Middleware do
     let(:valid_token) { 'super-secret-token-1234' }
 
     it 'returns 200 with valid token' do
-      middleware = described_class.new(inner_app, token: valid_token)
-      test_app = Rack::Test::Session.new(Rack::MockSession.new(middleware))
+      test_app = build_app(token: valid_token)
       test_app.get('/buildbanner.json', {}, 'HTTP_AUTHORIZATION' => "Bearer #{valid_token}")
       expect(test_app.last_response.status).to eq(200)
     end
 
     it 'returns 401 with invalid token' do
-      middleware = described_class.new(inner_app, token: valid_token)
-      test_app = Rack::Test::Session.new(Rack::MockSession.new(middleware))
+      test_app = build_app(token: valid_token)
       test_app.get('/buildbanner.json', {}, 'HTTP_AUTHORIZATION' => 'Bearer wrong-token-value-x')
       expect(test_app.last_response.status).to eq(401)
     end
@@ -270,8 +249,7 @@ RSpec.describe BuildBanner::Middleware do
       allow(logger).to receive(:warn)
       allow(logger).to receive(:error)
 
-      middleware = described_class.new(inner_app, token: 'short', logger: logger)
-      test_app = Rack::Test::Session.new(Rack::MockSession.new(middleware))
+      test_app = build_app(token: 'short', logger: logger)
       test_app.get('/buildbanner.json')
 
       expect(test_app.last_response.status).to eq(200)
