@@ -2,8 +2,8 @@
 const { readFileSync } = require("node:fs");
 const { gzipSync } = require("node:zlib");
 
-// Increased from 4096 for links.js module added in Task 12
-const BUDGET_BYTES = 4608;
+// Increased from 4608 for token-warnings.js module added in Task 14
+const BUDGET_BYTES = 5120;
 
 /** Return the gzipped byte size of a file. */
 function getGzippedSize(filePath) {

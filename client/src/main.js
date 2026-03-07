@@ -5,6 +5,7 @@ import { createLogger } from "./logger.js";
 import { fetchBannerData } from "./fetch.js";
 import { createBannerHost, destroyBannerHost } from "./dom.js";
 import { renderSegments } from "./segments.js";
+import { checkTokenWarnings } from "./token-warnings.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
@@ -38,6 +39,7 @@ async function init(opts = {}) {
     _setInstance(pending);
 
     const config = resolveConfig({}, opts);
+    checkTokenWarnings(config);
     const logger = createLogger(config.debug);
 
     const data = await fetchBannerData(config.endpoint, {
