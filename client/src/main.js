@@ -18,6 +18,13 @@ function _getInstance() {
   return window[SYMBOL_KEY];
 }
 
+/** Get the active (non-destroyed) instance, or null. */
+function _getActiveInstance() {
+  const instance = _getInstance();
+  if (!instance || instance.destroyed) return null;
+  return instance;
+}
+
 /** Set the singleton instance tracker. */
 function _setInstance(instance) {
   window[SYMBOL_KEY] = instance;
@@ -104,17 +111,14 @@ async function init(opts = {}) {
       host, shadowRoot, wrapper, fallbackStyle, tickerTimerId,
       pollingState: null, destroyed: false,
       pushState, bannerHeight, config,
+      data, previousStatuses,
     };
 
     if (config.poll > 0) {
       const pollFetchFn = () => fetchBannerData(config.endpoint, { token: config.token, logger });
       const pollOnData = (newData) => {
-        if (instance.tickerTimerId) {
-          clearInterval(instance.tickerTimerId);
-        }
-        wrapper.textContent = "";
-        const rendered = renderSegments(newData, wrapper, config, previousStatuses);
-        instance.tickerTimerId = rendered.tickerTimerId;
+        instance.data = newData;
+        _rerender(instance);
       };
       instance.pollingState = startPolling(config, pollFetchFn, pollOnData, logger);
     }
@@ -134,7 +138,64 @@ async function init(opts = {}) {
   }
 }
 
-/** Destroy the banner and clean up. */
+/** Re-render segments from current instance data. */
+function _rerender(instance) {
+  if (instance.tickerTimerId) {
+    clearInterval(instance.tickerTimerId);
+  }
+  instance.wrapper.textContent = "";
+  const rendered = renderSegments(
+    instance.data, instance.wrapper, instance.config, instance.previousStatuses,
+  );
+  instance.tickerTimerId = rendered.tickerTimerId;
+}
+
+/** Trigger a manual re-fetch and update segments. */
+async function refresh() {
+  try {
+    const instance = _getActiveInstance();
+    if (!instance) return;
+
+    const logger = createLogger(instance.config.debug);
+    const newData = await fetchBannerData(instance.config.endpoint, {
+      token: instance.config.token,
+      logger,
+      isRefetch: true,
+    });
+
+    if (!newData) return;
+    instance.data = newData;
+    _rerender(instance);
+  } catch (err) {
+    console.debug("[BuildBanner] refresh failed:", err);
+  }
+}
+
+/**
+ * Merge partial data into current state and re-render without fetching.
+ * Top-level fields are replaced; `custom` is merged key-by-key per spec
+ * so callers can update individual custom fields without losing others.
+ */
+function update(partialData) {
+  try {
+    const instance = _getActiveInstance();
+    if (!instance || !instance.data) return;
+    if (!partialData || typeof partialData !== "object") return;
+
+    if (partialData.custom && instance.data.custom) {
+      partialData = {
+        ...partialData,
+        custom: { ...instance.data.custom, ...partialData.custom },
+      };
+    }
+    instance.data = { ...instance.data, ...partialData };
+    _rerender(instance);
+  } catch (err) {
+    console.debug("[BuildBanner] update failed:", err);
+  }
+}
+
+/** Destroy the banner and clean up. All methods become no-ops after this. */
 function destroy() {
   try {
     const instance = _getInstance();
@@ -143,19 +204,38 @@ function destroy() {
     resetDismiss();
     instance.destroyed = true;
     _clearInstance();
-  } catch {
-    /* Never throw. */
+    _disableMethods();
+  } catch (err) {
+    console.debug("[BuildBanner] destroy failed:", err);
   }
 }
 
 /** Check if the banner is currently visible. */
 function isVisible() {
   try {
-    const instance = _getInstance();
-    return Boolean(instance && !instance.destroyed && !instance.pending);
+    return Boolean(_getActiveInstance());
   } catch {
     return false;
   }
+}
+
+const ORIGINAL_METHODS = { init, destroy, refresh, update, isVisible };
+
+/** Replace all public methods with no-ops except init (which re-enables). */
+function _disableMethods() {
+  BuildBanner.destroy = () => {};
+  BuildBanner.refresh = () => Promise.resolve();
+  BuildBanner.update = () => {};
+  BuildBanner.isVisible = () => false;
+  BuildBanner.init = function restoreAndInit(opts) {
+    _restoreMethods();
+    return init(opts);
+  };
+}
+
+/** Restore original methods on the public API. */
+function _restoreMethods() {
+  Object.assign(BuildBanner, ORIGINAL_METHODS);
 }
 
 /** Auto-detect script tag and initialize on DOMContentLoaded. */
@@ -185,12 +265,18 @@ if (typeof document !== "undefined") {
   }
 }
 
-/** Public API exposed as window.BuildBanner. */
-const BuildBanner = { init, destroy, isVisible };
+/**
+ * Public API exposed as window.BuildBanner.
+ * Note: the no-op-after-destroy guard via _disableMethods() only applies to
+ * consumers using `window.BuildBanner` or the default export. ES module named
+ * imports hold direct references to the original functions; those are guarded
+ * by the internal _getActiveInstance() check instead.
+ */
+const BuildBanner = { ...ORIGINAL_METHODS };
 
 if (typeof window !== "undefined") {
   window.BuildBanner = BuildBanner;
 }
 
-export { init, destroy, isVisible };
+export { init, destroy, refresh, update, isVisible };
 export default BuildBanner;
