@@ -104,17 +104,14 @@ async function init(opts = {}) {
       host, shadowRoot, wrapper, fallbackStyle, tickerTimerId,
       pollingState: null, destroyed: false,
       pushState, bannerHeight, config,
+      data, previousStatuses,
     };
 
     if (config.poll > 0) {
       const pollFetchFn = () => fetchBannerData(config.endpoint, { token: config.token, logger });
       const pollOnData = (newData) => {
-        if (instance.tickerTimerId) {
-          clearInterval(instance.tickerTimerId);
-        }
-        wrapper.textContent = "";
-        const rendered = renderSegments(newData, wrapper, config, previousStatuses);
-        instance.tickerTimerId = rendered.tickerTimerId;
+        instance.data = newData;
+        _rerender(instance);
       };
       instance.pollingState = startPolling(config, pollFetchFn, pollOnData, logger);
     }
@@ -134,7 +131,60 @@ async function init(opts = {}) {
   }
 }
 
-/** Destroy the banner and clean up. */
+/** Re-render segments from current instance data. */
+function _rerender(instance) {
+  if (instance.tickerTimerId) {
+    clearInterval(instance.tickerTimerId);
+  }
+  instance.wrapper.textContent = "";
+  const rendered = renderSegments(
+    instance.data, instance.wrapper, instance.config, instance.previousStatuses,
+  );
+  instance.tickerTimerId = rendered.tickerTimerId;
+}
+
+/** Trigger a manual re-fetch and update segments. */
+async function refresh() {
+  try {
+    const instance = _getInstance();
+    if (!instance || instance.destroyed || instance.pending) return;
+
+    const logger = createLogger(instance.config.debug);
+    const newData = await fetchBannerData(instance.config.endpoint, {
+      token: instance.config.token,
+      logger,
+      isRefetch: true,
+    });
+
+    if (!newData) return;
+    instance.data = newData;
+    _rerender(instance);
+  } catch {
+    /* Never throw. */
+  }
+}
+
+/** Merge partial data into current state and re-render without fetching. */
+function update(partialData) {
+  try {
+    const instance = _getInstance();
+    if (!instance || instance.destroyed || instance.pending) return;
+    if (!partialData || typeof partialData !== "object") return;
+
+    if (partialData.custom && instance.data.custom) {
+      partialData = {
+        ...partialData,
+        custom: { ...instance.data.custom, ...partialData.custom },
+      };
+    }
+    instance.data = { ...instance.data, ...partialData };
+    _rerender(instance);
+  } catch {
+    /* Never throw. */
+  }
+}
+
+/** Destroy the banner and clean up. All methods become no-ops after this. */
 function destroy() {
   try {
     const instance = _getInstance();
@@ -143,6 +193,7 @@ function destroy() {
     resetDismiss();
     instance.destroyed = true;
     _clearInstance();
+    _disableMethods();
   } catch {
     /* Never throw. */
   }
@@ -156,6 +207,31 @@ function isVisible() {
   } catch {
     return false;
   }
+}
+
+/** Replace all public methods with no-ops except init (which re-enables). */
+function _disableMethods() {
+  const noop = () => {};
+  const noopAsync = () => Promise.resolve();
+  const noopFalse = () => false;
+
+  BuildBanner.destroy = noop;
+  BuildBanner.refresh = noopAsync;
+  BuildBanner.update = noop;
+  BuildBanner.isVisible = noopFalse;
+  BuildBanner.init = function restoreAndInit(opts) {
+    _restoreMethods();
+    return init(opts);
+  };
+}
+
+/** Restore original methods on the public API. */
+function _restoreMethods() {
+  BuildBanner.init = init;
+  BuildBanner.destroy = destroy;
+  BuildBanner.refresh = refresh;
+  BuildBanner.update = update;
+  BuildBanner.isVisible = isVisible;
 }
 
 /** Auto-detect script tag and initialize on DOMContentLoaded. */
@@ -186,11 +262,11 @@ if (typeof document !== "undefined") {
 }
 
 /** Public API exposed as window.BuildBanner. */
-const BuildBanner = { init, destroy, isVisible };
+const BuildBanner = { init, destroy, refresh, update, isVisible };
 
 if (typeof window !== "undefined") {
   window.BuildBanner = BuildBanner;
 }
 
-export { init, destroy, isVisible };
+export { init, destroy, refresh, update, isVisible };
 export default BuildBanner;
