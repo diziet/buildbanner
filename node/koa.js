@@ -1,9 +1,7 @@
 /** BuildBanner Koa middleware — serves build info as JSON. */
 'use strict';
 
-const { createBanner } = require('./lib/core');
-
-const DEFAULT_PATH = '/buildbanner.json';
+const { createMiddlewareCore } = require('./lib/middleware-common');
 
 /**
  * Create Koa middleware that serves BuildBanner JSON.
@@ -15,12 +13,7 @@ const DEFAULT_PATH = '/buildbanner.json';
  * @returns {Function} Koa middleware (ctx, next).
  */
 function buildBannerKoa(options = {}) {
-  const servePath = options.path || DEFAULT_PATH;
-  const factory = options._createBanner || createBanner;
-  const banner = factory({
-    token: options.token,
-    extras: options.extras,
-  });
+  const { servePath, banner } = createMiddlewareCore(options);
 
   return async function buildBannerHandler(ctx, next) {
     if (ctx.method !== 'GET' || ctx.path !== servePath) {
@@ -39,8 +32,9 @@ function buildBannerKoa(options = {}) {
       const data = banner.getBannerData();
       ctx.set('Cache-Control', 'no-store');
       ctx.body = data;
-    } catch (err) {
-      ctx.throw(500, err.message);
+    } catch {
+      ctx.status = 500;
+      ctx.body = { error: 'Internal server error' };
     }
   };
 }

@@ -3,46 +3,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Koa from 'koa';
 import request from 'supertest';
 import { buildBannerKoa } from '../koa.js';
-
-const FAKE_SHA = 'a1b2c3d';
-const FAKE_SHA_FULL = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
-const FAKE_BRANCH = 'main';
-const FAKE_TOKEN = 'abcdefghijklmnop';
-
-const FAKE_BANNER_DATA = {
-  _buildbanner: { version: 1 },
-  sha: FAKE_SHA,
-  sha_full: FAKE_SHA_FULL,
-  branch: FAKE_BRANCH,
-  server_started: '2026-02-13T14:25:00.000Z',
-};
-
-/** Create a fake createBanner factory with optional token auth and extras. */
-function fakeCreateBanner(token = null) {
-  return (opts = {}) => ({
-    getBannerData: () => {
-      const data = { ...FAKE_BANNER_DATA };
-      if (typeof opts.extras === 'function') {
-        try {
-          const extra = opts.extras();
-          if (extra && typeof extra === 'object') {
-            Object.assign(data, extra);
-          }
-        } catch {
-          // extras threw — omit them
-        }
-      }
-      return data;
-    },
-    checkAuth: (header) => {
-      if (!token) return { authorized: true };
-      if (!header || !header.startsWith('Bearer ')) {
-        return { authorized: false };
-      }
-      return { authorized: header.slice('Bearer '.length) === token };
-    },
-  });
-}
+import {
+  FAKE_SHA,
+  FAKE_SHA_FULL,
+  FAKE_BRANCH,
+  FAKE_TOKEN,
+  FAKE_BANNER_DATA,
+  fakeCreateBanner,
+} from './helpers/fixtures.js';
 
 /** Create a Koa app with the middleware and an extra test route. */
 function createApp(options = {}) {
@@ -58,6 +26,16 @@ function createApp(options = {}) {
     }
   });
   return app;
+}
+
+/** Create a factory where getBannerData throws. */
+function throwingCreateBanner() {
+  return () => ({
+    getBannerData: () => {
+      throw new Error('unexpected failure');
+    },
+    checkAuth: () => ({ authorized: true }),
+  });
 }
 
 describe('Koa middleware — happy path', () => {
@@ -224,5 +202,16 @@ describe('Koa middleware — token auth', () => {
 
     expect(res.status).toBe(200);
     expect(res.body._buildbanner).toEqual({ version: 1 });
+  });
+});
+
+describe('Koa middleware — internal error handling', () => {
+  it('returns 500 with generic message when getBannerData throws', async () => {
+    const app = new Koa();
+    app.use(buildBannerKoa({ _createBanner: throwingCreateBanner() }));
+    const res = await request(app.callback()).get('/buildbanner.json');
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Internal server error');
   });
 });
