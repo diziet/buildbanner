@@ -1,24 +1,27 @@
 """BuildBanner core — git info extraction and JSON response builder."""
 
+import hmac
 import logging
 import os
 import re
+import shlex
 import subprocess
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urlparse, urlunparse
 
 logger = logging.getLogger(__name__)
 
 SHORT_SHA_LEN = 7
+MIN_SHA_FULL_LEN = 40
 MIN_TOKEN_LEN = 16
 
 
-def _run_git(command: str) -> Optional[str]:
+def _run_git(command: List[str]) -> Optional[str]:
     """Run a git command, return trimmed stdout or None on failure."""
     try:
         result = subprocess.run(
-            command.split(),
+            command,
             capture_output=True,
             text=True,
             timeout=5,
@@ -36,19 +39,21 @@ def _read_git_info() -> Dict[str, Optional[str]]:
     sha = None
     commit_date = None
 
-    log_line = _run_git('git log -1 --format=%H %h %cd --date=iso-strict')
+    log_line = _run_git([
+        'git', 'log', '-1', '--format=%H %cd', '--date=iso-strict',
+    ])
     if log_line:
-        parts = log_line.split(' ')
+        parts = log_line.split(' ', 1)
         sha_full = parts[0] if parts else None
         sha = sha_full[:SHORT_SHA_LEN] if sha_full else None
-        commit_date = parts[2] if len(parts) > 2 else None
+        commit_date = parts[1] if len(parts) > 1 else None
 
-    branch = _run_git('git rev-parse --abbrev-ref HEAD')
+    branch = _run_git(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
     if branch == 'HEAD':
-        tag = _run_git('git describe --tags --exact-match')
+        tag = _run_git(['git', 'describe', '--tags', '--exact-match'])
         branch = tag
 
-    repo_url = _run_git('git remote get-url origin')
+    repo_url = _run_git(['git', 'remote', 'get-url', 'origin'])
 
     return {
         'sha': sha,
@@ -77,6 +82,8 @@ def sanitize_repo_url(raw_url: Optional[str]) -> Optional[str]:
 
     try:
         parsed = urlparse(url)
+        if not parsed.hostname:
+            return None
         # Strip userinfo
         clean = urlunparse((
             parsed.scheme,
@@ -86,7 +93,7 @@ def sanitize_repo_url(raw_url: Optional[str]) -> Optional[str]:
             parsed.query,
             parsed.fragment,
         ))
-    except (ValueError, AttributeError):
+    except (ValueError, AttributeError, TypeError):
         return None
 
     # Remove .git suffix and trailing slashes
@@ -119,7 +126,7 @@ def _apply_env_overrides(
     env_sha = os.environ.get('BUILDBANNER_SHA')
     if env_sha:
         info['sha'] = env_sha[:SHORT_SHA_LEN]
-        if len(env_sha) >= 8:
+        if len(env_sha) >= MIN_SHA_FULL_LEN:
             info['sha_full'] = env_sha
 
     if os.environ.get('BUILDBANNER_BRANCH'):
@@ -178,8 +185,6 @@ def validate_token(
         return False
 
     provided = request_header[len('Bearer '):]
-    # Constant-time comparison
-    import hmac
     return hmac.compare_digest(provided, configured_token)
 
 
@@ -189,7 +194,8 @@ def get_banner_data(
     """Build the banner data dict. Never raises."""
     try:
         return _build_banner_data(extras)
-    except Exception:
+    except Exception as err:
+        logger.error(f'BuildBanner: get_banner_data failed: {err}')
         return {'_buildbanner': {'version': 1}}
 
 
@@ -251,14 +257,14 @@ def _build_banner_data(
 
 
 def _warn_production_token() -> None:
-    """Log warning if environment is production and token is configured."""
+    """Log info if environment is production and token is configured."""
     environment = os.environ.get('BUILDBANNER_ENVIRONMENT')
     token = os.environ.get('BUILDBANNER_TOKEN')
     if environment == 'production' and token and len(token) >= MIN_TOKEN_LEN:
-        logger.warning(
+        logger.info(
             'BuildBanner: token auth is enabled in production environment',
         )
 
 
-# Emit production token warning at module load
+# Emit production token info at module load
 _warn_production_token()
