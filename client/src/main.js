@@ -7,6 +7,7 @@ import { createBannerHost, destroyBannerHost } from "./dom.js";
 import { renderSegments } from "./segments.js";
 import { checkTokenWarnings } from "./token-warnings.js";
 import { isDismissed, createDismissButton, resetDismiss } from "./dismiss.js";
+import { startPolling, stopPolling } from "./polling.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
@@ -68,8 +69,19 @@ async function init(opts = {}) {
     const { host, shadowRoot, wrapper, fallbackStyle } = result;
     const { tickerTimerId } = renderSegments(data, wrapper, config);
 
+    let pollingState = null;
+    if (config.poll > 0) {
+      const pollFetchFn = () => fetchBannerData(config.endpoint, { token: config.token, logger });
+      const pollOnData = (newData) => {
+        wrapper.textContent = "";
+        renderSegments(newData, wrapper, config);
+      };
+      pollingState = startPolling(config, pollFetchFn, pollOnData, logger);
+    }
+
     const dismissBtn = createDismissButton(config, () => {
       if (tickerTimerId) clearInterval(tickerTimerId);
+      if (pollingState) stopPolling(pollingState);
       destroyBannerHost(host, fallbackStyle);
       _clearInstance();
     });
@@ -77,7 +89,7 @@ async function init(opts = {}) {
       wrapper.appendChild(dismissBtn);
     }
 
-    const instance = { host, shadowRoot, wrapper, fallbackStyle, tickerTimerId, destroyed: false };
+    const instance = { host, shadowRoot, wrapper, fallbackStyle, tickerTimerId, pollingState, destroyed: false };
     _setInstance(instance);
   } catch (err) {
     _clearInstance();
@@ -92,6 +104,9 @@ function destroy() {
     if (!instance) return;
     if (instance.tickerTimerId) {
       clearInterval(instance.tickerTimerId);
+    }
+    if (instance.pollingState) {
+      stopPolling(instance.pollingState);
     }
     destroyBannerHost(instance.host, instance.fallbackStyle);
     resetDismiss();
