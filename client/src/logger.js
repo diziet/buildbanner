@@ -6,11 +6,12 @@ export const LOG_CAP = 20;
 const PREFIX = "[BuildBanner] ";
 
 /**
- * Create a logger instance with optional warn-level promotion.
- * @param {boolean} warnEnabled - When true, also emits console.warn.
+ * Create a logger instance. Always emits console.debug; when debug mode
+ * is active (data-debug="true"), also promotes messages to console.warn.
+ * @param {boolean} debugEnabled - Maps to config.debug (data-debug attr).
  * @returns {{ log: (message: string) => void }}
  */
-export function createLogger(warnEnabled) {
+export function createLogger(debugEnabled) {
   let callCount = 0;
 
   return {
@@ -22,7 +23,7 @@ export function createLogger(warnEnabled) {
       callCount++;
       const prefixed = PREFIX + message;
       console.debug(prefixed);
-      if (warnEnabled) {
+      if (debugEnabled) {
         console.warn(prefixed);
       }
     },
