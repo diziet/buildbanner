@@ -137,7 +137,7 @@ export function renderSegments(data, wrapper, config = {}) {
     const shaValue = data.sha_full || data.sha;
     const shaLink = createLink(data.repo_url, "commit", shaValue, hostPatterns);
     const shaEl = _createMaybeLinkedSegment("sha", data.sha, shaLink);
-    shaEl.style.cursor = "pointer";
+    shaEl.classList.add("bb-clickable");
     const logger = createLogger(config.debug);
     attachCopyHandler(shaEl, shaValue, logger);
     segments.push(shaEl);

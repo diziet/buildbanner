@@ -54,6 +54,9 @@ function _buildStyles(config) {
 
   return `
     .bb-wrapper {${_buildWrapperCssProperties(height, zIndex)}
+    }
+    .bb-clickable {
+      cursor: pointer;
     }${_buildAnchorCss(".bb-wrapper")}
   `;
 }
@@ -78,6 +81,9 @@ function _buildFallbackStyles(config) {
       visibility: visible;
       opacity: 1;
       direction: ltr;
+    }
+    .__buildbanner-clickable {
+      cursor: pointer;
     }${_buildAnchorCss(".__buildbanner-wrapper")}
   `;
 }

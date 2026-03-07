@@ -2,7 +2,11 @@
 
 const COPIED_DISPLAY_MS = 1500;
 
-/** Copy text using the legacy execCommand fallback. */
+/**
+ * Copy text using the legacy execCommand fallback.
+ * Note: uses inline styles on a transient textarea to position it off-screen.
+ * A strict CSP blocking inline styles may make the textarea briefly visible.
+ */
 function _execCommandCopy(text) {
   const textarea = document.createElement("textarea");
   textarea.value = text;
@@ -34,10 +38,10 @@ function _flashCopied(element, originalText) {
  * On click, copies fullSha to clipboard, shows "Copied!" for 1500ms.
  */
 export function attachCopyHandler(shaElement, fullSha, logger) {
-  let revertTimerId = null;
   let isCopied = false;
 
   shaElement.addEventListener("click", (e) => {
+    if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
 
     if (isCopied) return;
@@ -46,7 +50,7 @@ export function attachCopyHandler(shaElement, fullSha, logger) {
     isCopied = true;
 
     const onSuccess = () => {
-      revertTimerId = _flashCopied(shaElement, originalText);
+      _flashCopied(shaElement, originalText);
       setTimeout(() => {
         isCopied = false;
       }, COPIED_DISPLAY_MS);
