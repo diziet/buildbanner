@@ -3,5 +3,6 @@
 
 const { buildBannerMiddleware } = require('./server');
 const { buildBannerKoa } = require('./koa');
+const { buildBannerHono } = require('./hono');
 
-module.exports = { buildBannerMiddleware, buildBannerKoa };
+module.exports = { buildBannerMiddleware, buildBannerKoa, buildBannerHono };
