@@ -24,6 +24,10 @@ vendor/bundle/
 .DS_Store
 Thumbs.db
 
+# Autopilot
+autopilot.conf
+.autopilot/
+
 # Build artifacts
 *.min.js
 !client/buildbanner.min.js
