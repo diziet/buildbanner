@@ -6,7 +6,7 @@ import { fetchBannerData } from "./fetch.js";
 import { createBannerHost, destroyBannerHost } from "./dom.js";
 import { renderSegments } from "./segments.js";
 import { checkTokenWarnings } from "./token-warnings.js";
-import { isDismissed, createDismissButton } from "./dismiss.js";
+import { isDismissed, createDismissButton, resetDismiss } from "./dismiss.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
@@ -43,7 +43,7 @@ async function init(opts = {}) {
     checkTokenWarnings(config);
 
     if (isDismissed(config)) {
-      _clearInstance();
+      pending.destroyed = true;
       return;
     }
 
@@ -69,7 +69,9 @@ async function init(opts = {}) {
     const { tickerTimerId } = renderSegments(data, wrapper, config);
 
     const dismissBtn = createDismissButton(config, () => {
+      if (tickerTimerId) clearInterval(tickerTimerId);
       destroyBannerHost(host, fallbackStyle);
+      _clearInstance();
     });
     if (dismissBtn) {
       wrapper.appendChild(dismissBtn);
@@ -92,6 +94,7 @@ function destroy() {
       clearInterval(instance.tickerTimerId);
     }
     destroyBannerHost(instance.host, instance.fallbackStyle);
+    resetDismiss();
     instance.destroyed = true;
     _clearInstance();
   } catch {

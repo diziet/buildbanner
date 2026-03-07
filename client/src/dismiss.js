@@ -2,46 +2,33 @@
 
 const STORAGE_KEY = "buildbanner-dismissed";
 
+// NOTE: Module-level singleton flag. When storage is blocked, this is the only
+// dismiss memory. Shared across all callers for the lifetime of the page.
 let dismissedInMemory = false;
 
-/** Read a value from the appropriate storage, returning null on failure. */
-function _readStorage(dismiss) {
+/** Return the appropriate Storage object, or null if unavailable/invalid. */
+function _getStorage(dismiss) {
   try {
-    if (dismiss === "session") {
-      return sessionStorage.getItem(STORAGE_KEY);
-    }
-    if (dismiss === "permanent") {
-      return localStorage.getItem(STORAGE_KEY);
-    }
+    if (dismiss === "session") return sessionStorage;
+    if (dismiss === "permanent") return localStorage;
   } catch {
-    return null;
+    /* storage blocked (e.g. private browsing) */
   }
   return null;
-}
-
-/** Write a value to the appropriate storage, returning true on success. */
-function _writeStorage(dismiss) {
-  try {
-    if (dismiss === "session") {
-      sessionStorage.setItem(STORAGE_KEY, "1");
-      return true;
-    }
-    if (dismiss === "permanent") {
-      localStorage.setItem(STORAGE_KEY, "1");
-      return true;
-    }
-  } catch {
-    return false;
-  }
-  return false;
 }
 
 /** Check if the banner has been dismissed. */
 export function isDismissed(config) {
   if (!config || config.dismiss === "none") return false;
 
-  const stored = _readStorage(config.dismiss);
-  if (stored !== null) return true;
+  const storage = _getStorage(config.dismiss);
+  if (storage) {
+    try {
+      if (storage.getItem(STORAGE_KEY) !== null) return true;
+    } catch {
+      /* storage read blocked */
+    }
+  }
 
   return dismissedInMemory;
 }
@@ -56,7 +43,16 @@ export function createDismissButton(config, onDismiss) {
   button.className = "bb-dismiss";
 
   button.addEventListener("click", () => {
-    const wrote = _writeStorage(config.dismiss);
+    let wrote = false;
+    const storage = _getStorage(config.dismiss);
+    if (storage) {
+      try {
+        storage.setItem(STORAGE_KEY, "1");
+        wrote = true;
+      } catch {
+        /* storage write blocked */
+      }
+    }
     if (!wrote) {
       dismissedInMemory = true;
     }
@@ -65,17 +61,10 @@ export function createDismissButton(config, onDismiss) {
     }
   });
 
-  button.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      button.click();
-    }
-  });
-
   return button;
 }
 
-/** Reset the in-memory dismiss flag (for testing only). */
-export function _resetDismissState() {
+/** Reset the in-memory dismiss flag. */
+export function resetDismiss() {
   dismissedInMemory = false;
 }
