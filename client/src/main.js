@@ -7,6 +7,7 @@ import { createBannerHost, destroyBannerHost } from "./dom.js";
 import { renderSegments } from "./segments.js";
 import { checkTokenWarnings } from "./token-warnings.js";
 import { isDismissed, createDismissButton, resetDismiss } from "./dismiss.js";
+import { startPolling, stopPolling } from "./polling.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
@@ -23,6 +24,17 @@ function _setInstance(instance) {
 /** Clear the singleton instance tracker. */
 function _clearInstance() {
   window[SYMBOL_KEY] = null;
+}
+
+/** Tear down an instance — clear timers, stop polling, remove DOM. */
+function _teardown(instance) {
+  if (instance.tickerTimerId) {
+    clearInterval(instance.tickerTimerId);
+  }
+  if (instance.pollingState) {
+    stopPolling(instance.pollingState);
+  }
+  destroyBannerHost(instance.host, instance.fallbackStyle);
 }
 
 /** Initialize the banner. */
@@ -68,16 +80,29 @@ async function init(opts = {}) {
     const { host, shadowRoot, wrapper, fallbackStyle } = result;
     const { tickerTimerId } = renderSegments(data, wrapper, config);
 
+    const instance = { host, shadowRoot, wrapper, fallbackStyle, tickerTimerId, pollingState: null, destroyed: false };
+
+    if (config.poll > 0) {
+      const pollFetchFn = () => fetchBannerData(config.endpoint, { token: config.token, logger });
+      const pollOnData = (newData) => {
+        if (instance.tickerTimerId) {
+          clearInterval(instance.tickerTimerId);
+        }
+        wrapper.textContent = "";
+        const rendered = renderSegments(newData, wrapper, config);
+        instance.tickerTimerId = rendered.tickerTimerId;
+      };
+      instance.pollingState = startPolling(config, pollFetchFn, pollOnData, logger);
+    }
+
     const dismissBtn = createDismissButton(config, () => {
-      if (tickerTimerId) clearInterval(tickerTimerId);
-      destroyBannerHost(host, fallbackStyle);
+      _teardown(instance);
       _clearInstance();
     });
     if (dismissBtn) {
       wrapper.appendChild(dismissBtn);
     }
 
-    const instance = { host, shadowRoot, wrapper, fallbackStyle, tickerTimerId, destroyed: false };
     _setInstance(instance);
   } catch (err) {
     _clearInstance();
@@ -90,10 +115,7 @@ function destroy() {
   try {
     const instance = _getInstance();
     if (!instance) return;
-    if (instance.tickerTimerId) {
-      clearInterval(instance.tickerTimerId);
-    }
-    destroyBannerHost(instance.host, instance.fallbackStyle);
+    _teardown(instance);
     resetDismiss();
     instance.destroyed = true;
     _clearInstance();
