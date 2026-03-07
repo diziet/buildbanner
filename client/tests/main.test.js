@@ -203,4 +203,22 @@ describe("BuildBanner main", () => {
     expect(instance.destroyed).toBe(false);
     expect(window.__buildBannerInstance).toBeUndefined();
   });
+
+  it("re-init after destroy creates a new banner", async () => {
+    mockFetch.mockResolvedValue(mockResponse({ sha: "abc", branch: "main" }));
+
+    await BuildBanner.init({ endpoint: "/test.json" });
+    expect(BuildBanner.isVisible()).toBe(true);
+
+    BuildBanner.destroy();
+    expect(BuildBanner.isVisible()).toBe(false);
+
+    mockFetch.mockResolvedValue(mockResponse({ sha: "def", branch: "dev" }));
+    await BuildBanner.init({ endpoint: "/test.json" });
+    expect(BuildBanner.isVisible()).toBe(true);
+
+    const host = document.querySelector("[data-testid='buildbanner']");
+    const sha = host.shadowRoot.querySelector("[data-segment='sha']");
+    expect(sha.textContent).toBe("def");
+  });
 });

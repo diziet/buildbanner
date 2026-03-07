@@ -7,22 +7,24 @@ import { createBannerHost, destroyBannerHost } from "./dom.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
+/** Create a data segment span element. */
+function _createSegmentSpan(name, value) {
+  const span = document.createElement("span");
+  span.setAttribute("data-segment", name);
+  span.textContent = value;
+  return span;
+}
+
 /** Render branch and sha as plain spans separated by · */
 function _renderSegments(data, wrapper) {
   const segments = [];
 
   if (data.branch !== null && data.branch !== undefined) {
-    const span = document.createElement("span");
-    span.setAttribute("data-segment", "branch");
-    span.textContent = data.branch;
-    segments.push(span);
+    segments.push(_createSegmentSpan("branch", data.branch));
   }
 
   if (data.sha !== null && data.sha !== undefined) {
-    const span = document.createElement("span");
-    span.setAttribute("data-segment", "sha");
-    span.textContent = data.sha;
-    segments.push(span);
+    segments.push(_createSegmentSpan("sha", data.sha));
   }
 
   for (let i = 0; i < segments.length; i++) {
@@ -54,8 +56,8 @@ function _clearInstance() {
 async function init(opts = {}) {
   try {
     const existing = _getInstance();
-    if (existing) {
-      if (!existing.destroyed) {
+    if (existing && !existing.destroyed) {
+      if (!existing.pending) {
         console.debug("[BuildBanner] Already initialized, skipping");
       }
       return;
@@ -88,8 +90,9 @@ async function init(opts = {}) {
 
     const instance = { host, shadowRoot, wrapper, fallbackStyle, destroyed: false };
     _setInstance(instance);
-  } catch {
+  } catch (err) {
     _clearInstance();
+    console.debug("[BuildBanner] init failed:", err);
   }
 }
 
@@ -132,7 +135,7 @@ function _autoInit() {
   if (scriptEl.dataset.manual !== undefined) return;
 
   const config = parseConfig(scriptEl);
-  init(config);
+  init(config).catch(() => { /* Never throw — auto-init is fire-and-forget. */ });
 }
 
 if (typeof document !== "undefined") {

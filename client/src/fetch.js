@@ -23,20 +23,21 @@ export async function fetchBannerData(endpoint, options = {}) {
       headers,
     });
 
-    clearTimeout(timer);
-
     if (!response.ok) {
+      clearTimeout(timer);
       if (logger) logger.log(`Fetch failed: HTTP ${response.status}`);
       return null;
     }
 
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("text/html")) {
+      clearTimeout(timer);
       if (logger) logger.log("Fetch failed: received HTML instead of JSON");
       return null;
     }
 
     const data = await response.json();
+    clearTimeout(timer);
 
     if (data === null || typeof data !== "object" || Array.isArray(data)) {
       if (logger) logger.log("Fetch failed: response is not a JSON object");
