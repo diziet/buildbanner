@@ -1,8 +1,27 @@
 {
   "name": "buildbanner-server",
   "version": "0.1.0",
-  "main": "index.js",
   "description": "BuildBanner server helpers for Express, Koa, and Hono",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./server": "./server.js",
+    "./koa": "./koa.js",
+    "./hono": "./hono.js"
+  },
+  "files": [
+    "index.js",
+    "server.js",
+    "koa.js",
+    "hono.js",
+    "lib/"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/diziet/buildbanner.git",
+    "directory": "node"
+  },
   "devDependencies": {
     "ajv": "8.18.0",
     "ajv-formats": "3.0.1",

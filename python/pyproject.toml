@@ -1,12 +1,22 @@
-[project]
-name = "buildbanner"
-version = "0.1.0"
-description = "BuildBanner server helpers for Flask, Django, and FastAPI"
-requires-python = ">=3.8"
-
-[project.optional-dependencies]
-test = ["pytest"]
-
 [build-system]
 requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "buildbanner"
+version = "0.1.0"
+description = "BuildBanner server helpers for Flask, Django, FastAPI, and WSGI"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [
+    { name = "BuildBanner Contributors" },
+]
+
+[project.urls]
+Homepage = "https://github.com/diziet/buildbanner"
+Repository = "https://github.com/diziet/buildbanner"
+Issues = "https://github.com/diziet/buildbanner/issues"
+
+[project.optional-dependencies]
+test = ["pytest"]
