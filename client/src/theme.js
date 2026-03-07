@@ -1,16 +1,17 @@
 /** Theme module — provides dark/light/auto CSS for the banner. */
 
-export const DARK_BG = "#1a1a2e";
-export const DARK_FG = "#e0e0e0";
-export const LIGHT_BG = "#f0f0f0";
-export const LIGHT_FG = "#333333";
+import constants from "./style-constants.json" with { type: "json" };
 
-const DARK_LINK = "#6fa8dc";
-const LIGHT_LINK = "#1a5dab";
+export const DARK_BG = constants.DARK_BG;
+export const DARK_FG = constants.DARK_FG;
+export const LIGHT_BG = constants.LIGHT_BG;
+export const LIGHT_FG = constants.LIGHT_FG;
 
-export const FONT_FAMILY =
-  'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace';
-export const FONT_SIZE = "12px";
+const DARK_LINK = constants.DARK_LINK;
+const LIGHT_LINK = constants.LIGHT_LINK;
+
+export const FONT_FAMILY = constants.FONT_FAMILY;
+export const FONT_SIZE = constants.FONT_SIZE;
 
 /** Build CSS variable declarations for a color scheme. */
 function _colorVars(bg, fg, link) {

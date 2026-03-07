@@ -13,6 +13,20 @@ const MIN_PATH = resolve(DIST_DIR, "buildbanner.min.js");
 const UNMIN_PATH = resolve(DIST_DIR, "buildbanner.js");
 const CSS_PATH = resolve(DIST_DIR, "buildbanner.css");
 
+/** Evaluate the minified bundle in a fake browser environment. */
+function evaluateBundle() {
+  const code = readFileSync(MIN_PATH, "utf8");
+  const fakeWindow = {};
+  const fakeDoc = {
+    readyState: "complete",
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+  };
+  const fn = new Function("window", "document", "HTMLElement", code);
+  fn(fakeWindow, fakeDoc, { prototype: {} });
+  return fakeWindow;
+}
+
 beforeAll(() => {
   execSync("npm run build", { cwd: resolve(import.meta.dirname, "..") });
 });
@@ -50,70 +64,17 @@ describe("bundle output", () => {
   });
 
   it("window.BuildBanner is defined after evaluation", () => {
-    const code = readFileSync(MIN_PATH, "utf8");
-    const fn = new Function("window", "document", "HTMLElement", code);
-    const fakeWindow = {};
-    const fakeDoc = {
-      readyState: "complete",
-      querySelectorAll: () => [],
-      addEventListener: () => {},
-    };
-    const fakeHTMLElement = { prototype: {} };
-    fn(fakeWindow, fakeDoc, fakeHTMLElement);
-    expect(fakeWindow.BuildBanner).toBeDefined();
+    const win = evaluateBundle();
+    expect(win.BuildBanner).toBeDefined();
   });
 
-  it("BuildBanner.init is a function", () => {
-    const code = readFileSync(MIN_PATH, "utf8");
-    const fakeWindow = {};
-    const fakeDoc = {
-      readyState: "complete",
-      querySelectorAll: () => [],
-      addEventListener: () => {},
-    };
-    const fn = new Function("window", "document", "HTMLElement", code);
-    fn(fakeWindow, fakeDoc, { prototype: {} });
-    expect(typeof fakeWindow.BuildBanner.init).toBe("function");
-  });
-
-  it("BuildBanner.destroy is a function", () => {
-    const code = readFileSync(MIN_PATH, "utf8");
-    const fakeWindow = {};
-    const fakeDoc = {
-      readyState: "complete",
-      querySelectorAll: () => [],
-      addEventListener: () => {},
-    };
-    const fn = new Function("window", "document", "HTMLElement", code);
-    fn(fakeWindow, fakeDoc, { prototype: {} });
-    expect(typeof fakeWindow.BuildBanner.destroy).toBe("function");
-  });
-
-  it("BuildBanner.refresh is a function", () => {
-    const code = readFileSync(MIN_PATH, "utf8");
-    const fakeWindow = {};
-    const fakeDoc = {
-      readyState: "complete",
-      querySelectorAll: () => [],
-      addEventListener: () => {},
-    };
-    const fn = new Function("window", "document", "HTMLElement", code);
-    fn(fakeWindow, fakeDoc, { prototype: {} });
-    expect(typeof fakeWindow.BuildBanner.refresh).toBe("function");
-  });
-
-  it("BuildBanner.update is a function", () => {
-    const code = readFileSync(MIN_PATH, "utf8");
-    const fakeWindow = {};
-    const fakeDoc = {
-      readyState: "complete",
-      querySelectorAll: () => [],
-      addEventListener: () => {},
-    };
-    const fn = new Function("window", "document", "HTMLElement", code);
-    fn(fakeWindow, fakeDoc, { prototype: {} });
-    expect(typeof fakeWindow.BuildBanner.update).toBe("function");
-  });
+  it.each(["init", "destroy", "refresh", "update"])(
+    "BuildBanner.%s is a function",
+    (method) => {
+      const win = evaluateBundle();
+      expect(typeof win.BuildBanner[method]).toBe("function");
+    },
+  );
 });
 
 describe("fallback CSS content", () => {
@@ -122,5 +83,10 @@ describe("fallback CSS content", () => {
     expect(css).toContain(".__buildbanner-host");
     expect(css).toContain(".__buildbanner-wrapper");
     expect(css).toContain(".__buildbanner-clickable");
+  });
+
+  it("contains segment layout rules", () => {
+    const css = readFileSync(CSS_PATH, "utf8");
+    expect(css).toContain("[data-segment]");
   });
 });

@@ -1,0 +1,12 @@
+{
+  "DARK_BG": "#1a1a2e",
+  "DARK_FG": "#e0e0e0",
+  "DARK_LINK": "#6fa8dc",
+  "LIGHT_BG": "#f0f0f0",
+  "LIGHT_FG": "#333333",
+  "LIGHT_LINK": "#1a5dab",
+  "FONT_FAMILY": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, monospace",
+  "FONT_SIZE": "12px",
+  "DEFAULT_HEIGHT": 28,
+  "DEFAULT_Z_INDEX": 999999
+}

@@ -2,14 +2,11 @@
 const { writeFileSync, mkdirSync } = require("node:fs");
 const { resolve } = require("node:path");
 
-const DARK_BG = "#1a1a2e";
-const DARK_FG = "#e0e0e0";
-const DARK_LINK = "#6fa8dc";
-const FONT_FAMILY =
-  'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace';
-const FONT_SIZE = "12px";
-const DEFAULT_HEIGHT = 28;
-const DEFAULT_Z_INDEX = 999999;
+const {
+  DARK_BG, DARK_FG, DARK_LINK,
+  FONT_FAMILY, FONT_SIZE,
+  DEFAULT_HEIGHT, DEFAULT_Z_INDEX,
+} = require("../src/style-constants.json");
 
 const css = `/* BuildBanner fallback stylesheet for non-Shadow-DOM environments. */
 .__buildbanner-host {
@@ -50,6 +47,10 @@ const css = `/* BuildBanner fallback stylesheet for non-Shadow-DOM environments.
 
 .__buildbanner-clickable {
   cursor: pointer;
+}
+
+.__buildbanner-wrapper [data-segment] {
+  padding: 0 4px;
 }
 
 .__buildbanner-wrapper a {

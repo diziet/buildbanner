@@ -2,8 +2,9 @@
 
 import { createLogger } from "./logger.js";
 import { getThemeStyles, FONT_FAMILY, FONT_SIZE, DARK_BG, DARK_FG } from "./theme.js";
-export const DEFAULT_HEIGHT = 28;
-const DEFAULT_Z_INDEX = 999999;
+import constants from "./style-constants.json" with { type: "json" };
+export const DEFAULT_HEIGHT = constants.DEFAULT_HEIGHT;
+const DEFAULT_Z_INDEX = constants.DEFAULT_Z_INDEX;
 const VALID_POSITION_MODES = ["sticky", "fixed"];
 
 /** Resolve and validate height/zIndex as safe integers. */
