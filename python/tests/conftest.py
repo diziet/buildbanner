@@ -59,6 +59,12 @@ def make_git_side_effect(
     return side_effect
 
 
+def reload_adapter(module_name, attr_name, **env_overrides):
+    """Reload core + adapter module and return a specific attribute."""
+    mods = reload_modules('buildbanner.core', module_name, **env_overrides)
+    return mods[module_name].__dict__[attr_name]
+
+
 def reload_modules(*module_names, **env_overrides):
     """Reload buildbanner modules with fresh state and clean env."""
     for mod_name in list(sys.modules):

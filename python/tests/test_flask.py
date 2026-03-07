@@ -7,15 +7,16 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 
-from tests.conftest import VALID_TEST_TOKEN, make_git_side_effect, reload_modules
+from tests.conftest import (
+    VALID_TEST_TOKEN, make_git_side_effect, reload_adapter,
+)
 
 
 def _reload_flask(**env_overrides):
     """Reload core and flask modules, return buildbanner_blueprint factory."""
-    mods = reload_modules(
-        'buildbanner.core', 'buildbanner.flask', **env_overrides,
+    return reload_adapter(
+        'buildbanner.flask', 'buildbanner_blueprint', **env_overrides,
     )
-    return mods['buildbanner.flask'].buildbanner_blueprint
 
 
 def _create_app(blueprint_factory, **kwargs):
