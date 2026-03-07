@@ -122,67 +122,73 @@ Write `client/tests/links.test.js` covering: GitHub commit link correct, GitHub 
 
 ---
 
-## Task 13: Click-to-copy SHA
+## Task 13: Time formatting module
+
+Create `client/src/time.js` exporting `formatUptime(serverStartedISO)`, `formatDeployAge(deployedAtISO)`, and `startUptimeTicker(element, serverStartedISO)`. `formatUptime` computes elapsed time from `server_started` to now and returns human-readable string (e.g. "up 2h 15m", "up 3d 1h", "up 45s"). `formatDeployAge` computes elapsed time from `deployed_at` to now and returns (e.g. "deployed 3h ago"). `startUptimeTicker` updates the element's `textContent` every 60 seconds (for always-live uptime display without polling). Returns a timer ID for cleanup. Write `client/tests/time.test.js` covering: uptime formats seconds correctly ("up 45s"), uptime formats minutes ("up 12m"), uptime formats hours+minutes ("up 2h 15m"), uptime formats days ("up 3d 1h"), deploy age formats correctly ("deployed 3h ago"), `startUptimeTicker` updates element text after 60 seconds (use `vi.useFakeTimers`), ticker returns clearable timer ID, null `server_started` returns null, null `deployed_at` returns null, both present → both strings returned, ISO 8601 with timezone offset parsed correctly.
+
+---
+
+## Task 14: Click-to-copy SHA
 
 Create `client/src/clipboard.js` exporting `attachCopyHandler(shaElement, fullSha, logger)`. On click, calls `e.preventDefault()` (to prevent navigation if the SHA is wrapped in an `<a>` link), then attempts `navigator.clipboard.writeText(fullSha)`. On success, replaces the element's `textContent` with "Copied!" for 1500ms, then reverts to the original SHA display text. On clipboard failure (or if API is unavailable), falls back to creating a temporary off-screen `<textarea>`, selecting the text, and calling `document.execCommand('copy')`. Integrate into `segments.js` so the SHA element (whether `<a>` or `<span>`) has `cursor: pointer` and the copy handler attached. Write `client/tests/clipboard.test.js` covering: click copies `sha_full` when present, click copies `sha` when `sha_full` absent, click calls `preventDefault` (no navigation), text changes to "Copied!" on success, text reverts after 1500ms (use `vi.useFakeTimers`), fallback to `execCommand` when clipboard API unavailable, fallback to text selection when both APIs fail, double-click during "Copied!" state doesn't break (debounce/ignore).
 
 ---
 
-## Task 14: Token auth client-side guardrails
+## Task 15: Token auth client-side guardrails
 
 Create `client/src/token-warnings.js` exporting `checkTokenWarnings(config)`. Token warnings use `console.warn` directly — they are safety guardrails, not diagnostic messages. They bypass the logger entirely and are not subject to the 20-message session cap or the debug flag. If `config.token` is set and shorter than 16 characters, calls `console.warn("[BuildBanner] Token is shorter than 16 characters. Short tokens offer minimal protection.")`. If `config.token` is set and `window.location.protocol === 'https:'` and the page hostname does not match `localhost`, `127.0.0.1`, or end with `.local`, `.internal`, or `.test`, calls `console.warn("[BuildBanner] Token auth detected on a public-facing origin. data-token is intended for staging/internal use only.")`. A dev running http://myapp.example.com during development shouldn't get warned — only HTTPS signals a truly public-facing origin. Integrate into `main.js` init flow so warnings fire before the first fetch. Write `client/tests/token-warnings.test.js` covering: short token (< 16 chars) triggers `console.warn` directly, long token (>= 16 chars) does not trigger short-token warning, HTTPS public hostname with token triggers public `console.warn`, `localhost` does not trigger public warning, `127.0.0.1` does not trigger public warning, `myapp.local` does not trigger public warning, `staging.internal` does not trigger public warning, `foo.test` does not trigger public warning, HTTP on public hostname does not trigger public warning, no token set triggers no warnings, both warnings fire simultaneously when applicable, warnings are called via `console.warn` not through the logger.
 
 ---
 
-## Task 15: Dismiss functionality
+## Task 16: Dismiss functionality
 
 Create `client/src/dismiss.js` exporting `createDismissButton(config, onDismiss)` and `isDismissed(config)`. `createDismissButton` returns a `<button>` element with text "✕", `aria-label="Close build banner"`, keyboard-navigable (focusable, activates on Enter/Space), visible `:focus-visible` ring styled in the shadow CSS. `isDismissed` checks `sessionStorage` (for `"session"` mode) or `localStorage` (for `"permanent"` mode) for key `"buildbanner-dismissed"`. If storage APIs throw (blocked), falls back to a module-level `dismissedInMemory` flag. On dismiss when storage throws, set `dismissedInMemory = true`. `isDismissed` checks this flag as a final fallback after storage checks fail — so if the user dismisses and then `destroy()` + re-init happens on the same page with blocked storage, the banner stays dismissed. When dismiss mode is `"none"`, `createDismissButton` returns `null` (no button rendered). On dismiss, writes to appropriate storage and calls `onDismiss` callback. Integrate into `main.js` so the dismiss button appears at the far right of the banner (after all segments), and the `onDismiss` callback removes the banner host and restores padding (calls `removePush` from Task 17 once it exists; until then, just removes DOM). In `main.js`, after config parsing and before fetch, call `isDismissed(config)`. If true, skip fetch and rendering entirely — return silently. Write `client/tests/dismiss.test.js` covering: session dismiss stores in sessionStorage, permanent dismiss stores in localStorage, `isDismissed` returns true after session dismiss, `isDismissed` returns true after permanent dismiss, dismiss mode "none" returns null button (no ✕ rendered), button has correct aria-label, button activates on Enter key, button activates on Space key, button has focus-visible ring class, storage blocked (throws) → dismiss sets in-memory flag → `isDismissed` returns true on same page without reload, storage blocked → dismiss still calls onDismiss callback, onDismiss callback is invoked (banner removal verified), banner not rendered when sessionStorage has buildbanner-dismissed, banner not rendered when localStorage has buildbanner-dismissed in permanent mode.
 
 ---
 
-## Task 16: Polling with exponential backoff and visibility awareness
+## Task 17: Polling with exponential backoff and visibility awareness
 
 Create `client/src/polling.js` exporting `startPolling(config, fetchFn, onData, logger)` and `stopPolling(state)`. `startPolling` sets an interval of `config.poll` seconds. On each tick, calls `fetchFn` with `isRefetch: true`. If data is returned, calls `onData(data)` to update segments in-place (via `renderSegments` re-call). On failure, does NOT remove or flicker the banner — keeps the last successfully rendered data visible. On consecutive failures, doubles the interval (capped at 300 seconds / 5 minutes). Registers a `visibilitychange` listener: when hidden, pauses polling (clears timer); when visible, fires an immediate fetch and resumes normal interval. Backoff resets only on a successful fetch while visible, not on visibility change alone. `stopPolling` clears timers and removes the visibility listener. Returns a state object with `{ timerId, listenerRef, currentInterval }` for cleanup. Integrate into `main.js` so polling starts after initial render when `config.poll > 0`, and `destroy()` calls `stopPolling`. Write `client/tests/polling.test.js` covering: polls at configured interval, successful poll resets interval, failed poll doubles interval, backoff caps at 300 seconds, tab hidden pauses polling (no fetches fire), tab visible triggers immediate fetch, tab visible resumes normal interval, backoff not reset by visibility change alone (endpoint still failing), `stopPolling` clears timer, `stopPolling` removes visibility listener, `poll=0` means no polling started, poll update calls `onData` with new data, failed poll does not call `onData`, failed poll does not flicker banner (banner DOM remains present), consecutive failures increase backoff (N→2N→4N), success after backoff resets to original interval.
 
 ---
 
-## Task 17: Push mode with existing-padding safety
+## Task 18: Push mode with existing-padding safety
 
 Create `client/src/push.js` exporting `applyPush(config, bannerHeight)` and `removePush(bannerHeight)`. `applyPush`: reads `getComputedStyle(document.documentElement).paddingTop`. If `config.push` is false, returns `{ mode: "overlay", originalPadding: existing }` without modifying anything. If the existing padding is non-zero, returns `{ mode: "overlay", originalPadding: existing }` and does not modify padding (logs via logger that push mode fell back to overlay due to existing padding). If zero, adds `bannerHeight` px to `<html>` padding-top (or padding-bottom for `config.position === "bottom"`) and returns `{ mode: "push", originalPadding: 0 }`. `removePush`: implements subtract-not-overwrite — reads current padding, if it equals `originalPadding + bannerHeight` restores to `originalPadding`, otherwise subtracts `bannerHeight` from current value, clamps to 0 (never negative). Integrate into `main.js` and `dom.js`: when `applyPush` returns `mode: "push"`, the banner host uses `position: sticky`; when `mode: "overlay"`, the banner host uses `position: fixed`. Wire `removePush` into both `destroy()` and the dismiss `onDismiss` callback so padding is restored on either action. Write `client/tests/push.test.js` covering: zero existing padding → push mode applies padding, non-zero existing padding → overlay mode (padding untouched), `config.push = false` → overlay mode (no padding modification), destroy restores original padding when no third-party changes, destroy subtracts banner height when third-party added padding after init, dismiss restores padding (calls removePush), result never goes negative (clamp to 0), bottom position applies padding-bottom instead, push mode sets `position: sticky` on banner host, overlay mode sets `position: fixed` on banner host.
 
 ---
 
-## Task 18: Theme support (dark/light/auto)
+## Task 19: Theme support (dark/light/auto)
 
 Create `client/src/theme.js` exporting `getThemeStyles(theme)` and the color constants `DARK_BG`, `DARK_FG`, `LIGHT_BG`, `LIGHT_FG` as named exports. Returns a CSS string for the banner. Both themes share base typography: `font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace` and `font-size: 12px`. Dark theme: background `#1a1a2e`, text `#e0e0e0`, link color muted blue. Light theme: background `#f0f0f0`, text `#333`. Auto theme: uses `@media (prefers-color-scheme: dark)` inside the shadow root stylesheet to switch between dark and light. All themes must meet WCAG AA contrast ratios (4.5:1) for all text elements. Integrate into `dom.js` so the `<style>` block inside the shadow root includes the correct theme CSS based on `config.theme`. Write `client/tests/theme.test.js` covering: dark theme applies dark background class/styles, light theme applies light background, auto theme includes `prefers-color-scheme` media query in stylesheet, default theme is dark, all three theme strings are valid CSS (no syntax errors), all themes include monospace font-family, contrast ratio check — compute from exported `DARK_BG`/`DARK_FG` constants and verify 4.5:1 ratio, contrast ratio check — compute from exported `LIGHT_BG`/`LIGHT_FG` and verify 4.5:1.
 
 ---
 
-## Task 19: Env-hide
+## Task 20: Env-hide
 
 Create `client/src/env-hide.js` exporting `shouldHide(envHideList, environment)`. If `envHideList` is null or empty, returns `false`. If `environment` matches any entry in `envHideList` (case-insensitive), returns `true`. Integrate into `main.js` init flow. **Implementation note:** the spec says `data-env-hide` "skips the fetch entirely," but the client has no way to know the environment without fetching — the environment value comes from the server response. The actual implementation performs the fetch, checks `responseData.environment` against the `envHideList`, and hides the banner (removes DOM, does not render) if matched. The fetch is still made but no banner is shown. This is a practical deviation from the spec's aspirational language; agents implementing this task should use the fetch-then-check approach. Write `client/tests/env-hide.test.js` covering: matching environment returns true (shouldHide), non-matching environment returns false, case-insensitive matching (`"Production"` matches `"production"`), multiple environments in list (`"production,staging"`), environment not in response → returns false, null envHideList → returns false, empty string envHideList → returns false, integration test — init with `data-env-hide="production"` and endpoint returning `environment: "production"` → no banner rendered.
 
 ---
 
-## Task 20: Accessibility — ARIA live region and keyboard navigation
+## Task 21: Accessibility — ARIA live region and keyboard navigation
 
 Update `client/src/segments.js` and `client/src/dom.js` for full accessibility. Wrap `tests` and `build` status segments in a container `<div>` with `role="status"` and `aria-live="polite"`. On poll updates (via `renderSegments` re-call), only update the live region content when `tests.status` or `build.status` actually changes from its previous value — store previous status values and compare before updating the live region DOM. This prevents screen readers from being spammed by identical content or uptime ticks. Ensure all interactive elements (close button, SHA copy, links) are reachable via Tab and activatable via Enter/Space. The banner never auto-focuses on render or poll update. Close button has visible `:focus-visible` ring. Tab order follows the canonical render order left-to-right: links → SHA → status links → dismiss. Write `client/tests/accessibility.test.js` covering: status container has `role="status"`, status container has `aria-live="polite"`, status change updates live region content, identical status on poll does not update live region, uptime tick does not update live region, close button is keyboard-navigable (tabIndex 0), close button responds to Enter, close button responds to Space, close button has focus-visible styles, no element has `autofocus`, all links are tabbable, tab order is correct (branch link → SHA → status links → dismiss).
 
 ---
 
-## Task 21: Lifecycle — refresh, update, Symbol guard finalization
+## Task 22: Lifecycle — refresh, update, Symbol guard finalization
 
 Extend `client/src/main.js` with the remaining lifecycle methods. `BuildBanner.refresh()`: triggers a manual re-fetch (calls `fetchBannerData` with `isRefetch: true`) and updates segments with the result. `BuildBanner.update(partialData)`: merges `partialData` into the current banner state (shallow merge at top level; `custom` is merged key-by-key) and re-renders segments without fetching. This enables SPA frameworks to push data changes without network round-trips. After `destroy()`, all methods on `window.BuildBanner` (`init`, `destroy`, `refresh`, `update`, `isVisible`) become no-ops that return silently — the global is NOT deleted, so existing references don't throw. A new active instance can be created by calling `BuildBanner.init()` after destroy. Write `client/tests/lifecycle.test.js` covering: `refresh()` re-fetches and updates segments, `refresh()` with endpoint failure keeps last data, `update({ custom: { model: "new" } })` merges into current state, `update()` re-renders without fetch, `update()` with partial custom merges (does not replace entire custom map), `update()` of status fields re-renders status dots, methods become no-ops after destroy (no error thrown), `init()` after destroy creates new instance, `update()` while polling is active works (data merges), `refresh()` after destroy is a no-op.
 
 ---
 
-## Task 22: Client build — minification, IIFE bundle, CDN-ready output
+## Task 23: Client build — minification, IIFE bundle, CDN-ready output
 
 Update `client/package.json` build scripts to produce the final distribution. The `build` script now outputs `dist/buildbanner.min.js` (minified IIFE, target es2017, no external deps), `dist/buildbanner.js` (unminified for debugging), and `dist/buildbanner.css` (fallback stylesheet for non-Shadow-DOM environments containing all `.__buildbanner-*` rules). Add `"files"` field listing `dist/` for npm publishing. Add `"unpkg": "dist/buildbanner.min.js"` and `"jsdelivr": "dist/buildbanner.min.js"` fields for CDN auto-resolution. Update the `size` script to enforce <3KB gzipped for `buildbanner.min.js`. Write `client/tests/bundle.test.js` covering: `buildbanner.min.js` exists and is valid JS, `buildbanner.js` (unminified) exists, `buildbanner.css` exists, minified file is smaller than unminified, gzipped size < 3072 bytes, IIFE format (no `import`/`export`), `window.BuildBanner` is defined after evaluation, `BuildBanner.init` is a function, `BuildBanner.destroy` is a function, `BuildBanner.refresh` is a function, `BuildBanner.update` is a function.
 
 ---
 
-## Task 23: Node server helper — core module
+## Task 24: Node server helper — core module
 
 Create `node/lib/core.js` as a shared core module used by all Node framework adapters. At `require` time (not per-request), reads git info by spawning `git` subprocesses: `git log -1 --format="%H %h %cd" --date=iso-strict` (extracts full 40-char SHA for `sha_full` and short 7-char for `sha`), `git rev-parse --abbrev-ref HEAD` (if result is `"HEAD"`, tries `git describe --tags --exact-match` — if tag found, uses tag as branch; else branch is null), `git remote get-url origin`. Environment variables override git: `BUILDBANNER_SHA` (if 8+ chars, also used as `sha_full`; short form derived by truncating to 7), `BUILDBANNER_BRANCH`, `BUILDBANNER_REPO_URL`, `BUILDBANNER_COMMIT_DATE`, `BUILDBANNER_DEPLOYED_AT`, `BUILDBANNER_APP_NAME` → `app_name`, `BUILDBANNER_ENVIRONMENT` → `environment`, `BUILDBANNER_PORT` → `port` (parsed as integer). Read `BUILDBANNER_TOKEN` from environment as fallback when `options.token` is not provided programmatically; programmatic wins. Custom fields from env vars: any `BUILDBANNER_CUSTOM_*` env var maps to `custom.{lowercased_suffix}` (e.g. `BUILDBANNER_CUSTOM_MODEL=gpt4` → `custom.model`). Sanitizes repo URL (strips userinfo, `.git` suffix, trailing slashes). Records `server_started` as ISO 8601 UTC at module load time. Caches all static fields. Every response includes `_buildbanner: { version: 1 }`. Accepts `options.extras` callback for dynamic fields (extras `custom` merges with env-var custom, extras wins on conflict). Stringifies non-string `custom` values via `String()`, omits null values. Never throws — if git and env vars both fail, fields are null; if extras throws, omits extras and logs once. Token auth: if `options.token` is configured, validates incoming `Authorization: Bearer <token>` header; returns 401 with empty body on mismatch; missing header → 401. If token is shorter than 16 characters, logs a warning at startup (`"BuildBanner: token is shorter than 16 characters, auth check disabled"`) and disables auth. If `environment` is `"production"` and token is set, logs a warning.
 
@@ -190,7 +196,7 @@ Write `node/tests/core.test.js` — unit tests for `node/lib/core.js` with **all
 
 ---
 
-## Task 24: Node server helper — Express adapter
+## Task 25: Node server helper — Express adapter
 
 Create `node/server.js` exporting `buildBannerMiddleware(options)` for Express. Uses `core.js` from Task 23 for all data/auth logic. Serves `GET` on `options.path` (default `/buildbanner.json`) with `Content-Type: application/json`, `Cache-Control: no-store`. Passes through all non-matching requests to `next()`. Update `node/index.js` to re-export the server helpers (Express middleware from `server.js`). Do NOT re-export the client from `../client/buildbanner.js` — that cross-package relative path breaks on npm publish. The client is a separate package (`buildbanner` from `client/`).
 
@@ -198,19 +204,19 @@ Write `node/tests/server.test.js` — integration tests for Express middleware (
 
 ---
 
-## Task 25: Node server helper — Koa adapter
+## Task 26: Node server helper — Koa adapter
 
 Create `node/koa.js` exporting `buildBannerKoa(options)`. Koa middleware reusing `node/lib/core.js` from Task 23. Responds to `GET` on configured path with the same JSON, same headers (`Cache-Control: no-store`, `Content-Type: application/json`), same token auth behavior. Passes through non-matching requests via `await next()`. Write `node/tests/koa.test.js` covering: happy path returns 200 with valid JSON including `_buildbanner.version`, `sha`, `sha_full`, correct headers, middleware passes through non-matching requests, env vars override git (via core), extras callback works, extras callback that throws → response without extras, `BUILDBANNER_CUSTOM_*` env vars populate custom map, token auth (valid → 200, invalid → 401).
 
 ---
 
-## Task 26: Node server helper — Hono adapter
+## Task 27: Node server helper — Hono adapter
 
 Create `node/hono.js` exporting `buildBannerHono(options)`. Hono middleware reusing `node/lib/core.js`. Same JSON contract, same headers, same token auth. Write `node/tests/hono.test.js` covering: happy path returns 200 with valid JSON including `_buildbanner.version`, `sha`, `sha_full`, correct headers, middleware passes through non-matching requests, env vars override git (via core), extras callback works, extras callback that throws → response without extras, `BUILDBANNER_CUSTOM_*` env vars populate custom map, token auth (valid → 200, invalid → 401).
 
 ---
 
-## Task 27: Python server helper — core module and Flask adapter
+## Task 28: Python server helper — core module and Flask adapter
 
 Create `python/buildbanner/core.py` with `get_banner_data(extras=None)` and `sanitize_repo_url(raw_url)`. At import time, reads git info by invoking `git` via `subprocess.run` (with **all subprocess calls mocked in tests**): `git log -1 --format="%H %h %cd" --date=iso-strict`, `git rev-parse --abbrev-ref HEAD` (detached HEAD → try `git describe --tags --exact-match`), `git remote get-url origin`. Environment variables override: `BUILDBANNER_SHA`, `BUILDBANNER_BRANCH`, `BUILDBANNER_REPO_URL`, `BUILDBANNER_COMMIT_DATE`, `BUILDBANNER_DEPLOYED_AT`, `BUILDBANNER_APP_NAME`, `BUILDBANNER_ENVIRONMENT`, `BUILDBANNER_PORT` (int). Read `BUILDBANNER_TOKEN` from environment as fallback when `options.token` is not provided programmatically; programmatic wins. `BUILDBANNER_CUSTOM_*` → `custom.*` (lowercased suffix). Sanitizes repo URL. Records `server_started` at module load. Always includes `_buildbanner: { "version": 1 }`. Emits both `sha` and `sha_full`. Stringifies non-string custom values via `str()`, omits `None`. Accepts `extras` callable; extras `custom` merges with env-var custom (extras wins). Never raises. Token auth helper: `validate_token(request_header, configured_token)` — returns True/False; short token (<16 chars) disables auth with logged warning. If `environment` is `"production"` and token is configured, log a warning at startup.
 
@@ -222,37 +228,37 @@ Write `python/tests/test_flask.py` — Flask integration tests. Covering: happy 
 
 ---
 
-## Task 28: Python server helper — FastAPI/Starlette middleware
+## Task 29: Python server helper — FastAPI/Starlette middleware
 
 Create `python/buildbanner/fastapi.py` with `BuildBannerMiddleware` (ASGI middleware) reusing `core.py`. Intercepts `GET` on configured path, returns JSON response with correct headers. Token auth via `core.validate_token`. Re-export from `__init__.py`. Write `python/tests/test_fastapi.py` covering: happy path 200 with JSON including `_buildbanner.version`, correct headers, extras callback with tests/build/custom, extras failure → omits extras, token auth (valid → 200, invalid → 401), `BUILDBANNER_CUSTOM_*` env vars, non-matching requests pass through, detached HEAD fixtures.
 
 ---
 
-## Task 29: Python server helper — Django middleware and WSGI wrapper
+## Task 30: Python server helper — Django middleware and WSGI wrapper
 
 Create `python/buildbanner/django.py` with `BuildBannerMiddleware` conforming to Django's middleware protocol (`__init__(self, get_response)`, `__call__(self, request)`). Reuses `core.py`. Intercepts `GET` on configured path, returns `JsonResponse` with correct headers. Token auth. Create `python/buildbanner/wsgi.py` with `buildbanner_wsgi(app, path="/buildbanner.json", extras=None, token=None)` as a WSGI wrapper reusing `core.py`. Re-export both from `__init__.py`. Write `python/tests/test_django.py` covering: Django middleware happy path, path interception, pass-through of non-matching routes, token auth (valid → 200, invalid → 401), short-token disabling. Write `python/tests/test_wsgi.py` covering: WSGI wrapper happy path, interception and pass-through, correct headers, token auth.
 
 ---
 
-## Task 30: Ruby server helper — Rack middleware
+## Task 31: Ruby server helper — Rack middleware
 
 Create `ruby/lib/buildbanner.rb` defining `BuildBanner::Middleware` as a Rack middleware class. At initialization, reads git info (with **all subprocess calls mocked in tests**, using `Open3.capture2` or backticks) — same extraction logic: full/short SHA, branch (detached HEAD → tag fallback), remote URL. Env var overrides: `BUILDBANNER_SHA`, `BUILDBANNER_BRANCH`, `BUILDBANNER_REPO_URL`, `BUILDBANNER_COMMIT_DATE`, `BUILDBANNER_DEPLOYED_AT`, `BUILDBANNER_APP_NAME`, `BUILDBANNER_ENVIRONMENT`, `BUILDBANNER_PORT`. Read `BUILDBANNER_TOKEN` from environment as fallback when `options.token` is not provided programmatically; programmatic wins. `BUILDBANNER_CUSTOM_*` → `custom.*` (lowercased suffix). URL sanitization. Records `server_started` at init. Always includes `_buildbanner: { "version" => 1 }`. Emits both `sha` and `sha_full`. Stringifies non-string custom values via `.to_s`, omits `nil`. Accepts `extras` lambda; extras `custom` merges with env-var custom (extras wins). Token auth with short-token guard. If `environment` is `"production"` and token is configured, log a warning at startup. Serves `GET` on configured path (default `/buildbanner.json`) with `Cache-Control: no-store`, `Content-Type: application/json`. Never raises. Write `ruby/spec/buildbanner_spec.rb` covering: happy path returns valid JSON, `_buildbanner.version == 1`, `sha` and `sha_full` present, `server_started` present, `BUILDBANNER_APP_NAME` → `app_name`, `BUILDBANNER_CUSTOM_MODEL` → `custom.model`, env vars override git, URL sanitization (load all fixtures from `shared/test_fixtures.json`), detached HEAD with tag, detached HEAD without tag, extras lambda works, extras lambda raises → omits extras, custom integer `.to_s` stringified, custom nil omitted, token auth (valid → 200, invalid → 401, short token → auth disabled with warning), production env with token → warning logged, response headers correct, middleware passes through non-matching requests, calling the middleware twice returns the same `server_started` value (cached, not recomputed).
 
 ---
 
-## Task 31: Cross-language parity enforcement
+## Task 32: Cross-language parity enforcement
 
 Create parameterized parity tests that call each language's public API with every shared fixture and verify identical output across all three languages. Create `tests/parity/node.test.js` (imports `node/lib/core.js`, mocks git, runs all fixtures), `tests/parity/test_python.py` (imports `buildbanner.core`, mocks subprocess, runs all fixtures), `tests/parity/ruby_parity_spec.rb` (requires `buildbanner`, mocks system calls, runs all fixtures). Each test loads `shared/test_fixtures.json` and verifies: all URL sanitization cases produce identical `repo_url` output, all branch detection cases produce identical `branch` output, custom stringification rules match (integer → string, null → omitted), `_buildbanner.version` is `1`, both `sha` and `sha_full` are emitted, `BUILDBANNER_CUSTOM_*` derivation produces identical `custom` maps (lowercased suffix keys), field names and JSON structure match exactly. This runs as a standalone CI job. Write `tests/parity/README.md` documenting how to run each language's parity suite independently and what "parity" means (same input → same JSON output structure and values).
 
 ---
 
-## Task 32: Static/nginx deployment example
+## Task 33: Static/nginx deployment example
 
 Create `examples/static-html/entrypoint.sh` — a shell script that generates `buildbanner.json` from `BUILDBANNER_*` env vars (including `BUILDBANNER_CUSTOM_*` → custom map with lowercased suffix keys, `_buildbanner.version: 1`, `sha`/`sha_full`, `server_started` set to current time). This validates that the env-var contract works without any server helper library — the critical path for distroless images, Bazel builds, and Nix. Create `examples/static-html/nginx.conf` serving the JSON at `/buildbanner.json` with `Cache-Control: no-store` and `Content-Type: application/json`, plus static files. Create `examples/static-html/index.html` with the standard `<script src="/static/buildbanner.min.js">` tag. Create `examples/static-html/Dockerfile` (nginx:alpine base) that runs `entrypoint.sh` then starts nginx. Write `tests/static-example.test.js` covering: `entrypoint.sh` exists and is executable, generated JSON validates against `shared/schema.json`, `BUILDBANNER_CUSTOM_MODEL=test` produces `custom.model: "test"`, `_buildbanner.version` is 1, `sha` and `sha_full` are both present, `nginx.conf` includes `no-store` directive, `nginx.conf` includes `application/json`, renamed endpoint path works (pass different path arg to entrypoint → generates at that path).
 
 ---
 
-## Task 33: End-to-end integration smoke test
+## Task 34: End-to-end integration smoke test
 
 Create `tests/e2e/smoke.test.js` — an integration test that wires the built client and a Node Express server helper together. This test requires Playwright (not jsdom) because it validates layout properties (`paddingTop`, `offsetHeight`) and computed styles (`font-family`, `color`) that require a real browser layout engine. Spin up an Express server using `buildBannerMiddleware` from Task 24 with known fixture data (override via `BUILDBANNER_*` env vars including `BUILDBANNER_CUSTOM_MODEL=test` and `BUILDBANNER_CUSTOM_REGION=us-east-1`). Serve a minimal HTML page that includes `<script src="buildbanner.min.js">`.
 
@@ -260,7 +266,7 @@ Use Playwright (Chromium) to verify: (1) banner DOM is rendered inside Shadow DO
 
 ---
 
-## Task 34: Packaging — Python (pip), Node (npm), Ruby (gem)
+## Task 35: Packaging — Python (pip), Node (npm), Ruby (gem)
 
 Finalize all three package configurations for publishing.
 
@@ -274,12 +280,12 @@ Write `python/tests/test_packaging.py` covering: `import buildbanner` succeeds, 
 
 ---
 
-## Task 35: Documentation
+## Task 36: Documentation
 
 Create `docs/README.md` — the main project README. Sections: what BuildBanner is (with banner screenshot placeholder), quick start (script tag, zero-config), configuration (table of all `data-*` attributes with defaults), programmatic API (`init`, `destroy`, `refresh`, `update`, `isVisible` — include `hostPatterns` option), environment variables (table of all `BUILDBANNER_*` env vars including `BUILDBANNER_CUSTOM_*` with derivation rule), server helpers (one subsection per framework: Flask, FastAPI, Django, WSGI, Express, Koa, Hono, Rack/Rails, static/nginx with link to example), JSON contract (summarize with link to `shared/schema.json`), custom fields usage, status indicators, theming, dismiss behavior, push mode, polling, size budget (<3KB), CSP compatibility notes, security posture summary (link to `docs/security.md`). Create `docs/configuration.md` with detailed configuration reference. Create `docs/security.md` covering: token auth limitations (not a security boundary), network-level controls recommendation, `data-env-hide`, endpoint renaming for discoverability, same-origin policy. Create `docs/csp.md` with CSP header examples for self-hosted and CDN usage, noting that the Shadow DOM path requires no CSP changes and the non-Shadow-DOM fallback path injects a `<style>` tag. Create `docs/self-hosting.md` with instructions for serving `buildbanner.min.js` from your own server. Create stub `examples/flask-app/`, `examples/express-app/`, `examples/rails-app/` directories with minimal one-file example apps. Write `tests/docs.test.js` covering: all doc files exist (`README.md`, `configuration.md`, `security.md`, `csp.md`, `self-hosting.md`), README contains required sections (quick start, configuration, API, server helpers, environment variables), `security.md` mentions token limitations, `schema.json` referenced in README, all framework names mentioned (Flask, Django, FastAPI, Express, Koa, Hono, Rails/Rack, nginx), `examples/static-html/` directory exists.
 
 ---
 
-## Task 36: CI pipeline setup
+## Task 37: CI pipeline setup
 
 Create `.github/workflows/ci.yml` with a GitHub Actions workflow. Jobs: (1) **client-build** — install deps, run `npm run build` in `client/`, run size check, run `vitest run` in `client/`. (2) **node-tests** — install deps, run `vitest run` in `node/`. (3) **python-tests** — set up Python 3.8+, `pip install -e python/`, run `pytest python/tests/`. (4) **ruby-tests** — set up Ruby, `bundle install` in `ruby/`, run `rspec ruby/spec/`. (5) **parity-tests** — run all three parity suites from Task 31. (6) **schema-validation** — run `tests/schema.test.js`. (7) **e2e** — install Playwright, build client, run `tests/e2e/smoke.test.js`. (8) **docs-check** — run `tests/docs.test.js`. The size check step should fail the build if gzipped output exceeds 3072 bytes. Add a step that comments the current gzipped size on PRs (using `actions/github-script`). Write `tests/ci.test.js` covering: `.github/workflows/ci.yml` exists, YAML is valid, contains expected job names (`client-build`, `node-tests`, `python-tests`, `ruby-tests`, `parity-tests`, `e2e`), size check step references the 3072 byte limit, Python version is 3.8+, Playwright install step exists.
