@@ -59,6 +59,11 @@ def make_git_side_effect(
     return side_effect
 
 
+def header_to_meta_key(header_name: str) -> str:
+    """Convert an HTTP header name to a WSGI/Django META key."""
+    return f'HTTP_{header_name.upper().replace("-", "_")}'
+
+
 def reload_adapter(module_name, attr_name, **env_overrides):
     """Reload core + adapter module and return a specific attribute."""
     mods = reload_modules('buildbanner.core', module_name, **env_overrides)

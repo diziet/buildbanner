@@ -16,6 +16,7 @@ SHORT_SHA_LEN = 7
 MIN_SHA_FULL_LEN = 40
 MIN_TOKEN_LEN = 16
 TOKEN_ENV_VAR = 'BUILDBANNER_TOKEN'
+DEFAULT_PATH = '/buildbanner.json'
 
 
 def _run_git(command: List[str]) -> Optional[str]:
