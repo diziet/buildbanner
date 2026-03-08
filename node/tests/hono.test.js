@@ -200,8 +200,10 @@ describe('Hono middleware — token auth', () => {
 });
 
 describe('Hono middleware — internal error handling', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it('returns 500 with generic message when getBannerData throws', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     const app = new Hono();
     app.use('*', buildBannerHono({ _createBanner: throwingCreateBanner() }));
     const res = await req(app, 'GET', DEFAULT_PATH);
@@ -209,6 +211,5 @@ describe('Hono middleware — internal error handling', () => {
     expect(res.status).toBe(500);
     const body = await res.json();
     expect(body.error).toBe('Internal server error');
-    errorSpy.mockRestore();
   });
 });
