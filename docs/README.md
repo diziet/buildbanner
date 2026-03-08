@@ -3,13 +3,13 @@
 A crash-proof, language-agnostic developer info banner for web apps. Drop a `<script>` tag into any app, point it at a JSON endpoint, get a GitHub-linked admin strip showing git SHA, branch, uptime, build status, and custom fields.
 
 ```
-+-----------------------------------------------------------------------+
++-------------------------------------------------------------------------+
 | main . a1b2c3d . Feb 13 14:30 . up 2h . pass 1.1M passed . port 8001  x |
-+-----------------------------------------------------------------------+
-|                                                                       |
-|                         Your actual app                               |
-|                                                                       |
-+-----------------------------------------------------------------------+
++-------------------------------------------------------------------------+
+|                                                                         |
+|                          Your actual app                                |
+|                                                                         |
++-------------------------------------------------------------------------+
 ```
 
 <!-- TODO: Replace with actual banner screenshot -->
