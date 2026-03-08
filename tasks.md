@@ -344,3 +344,14 @@ Add a `Makefile` at the monorepo root with the following targets:
 - `clean` — removes `client/dist/`, `python/__pycache__/`, `*.pyc`, `*.egg-info`.
 
 Each target should print a short header (e.g. `==> Installing JS dependencies...`) before each step for readability. The `test` target should fail fast on the first suite that fails. Add a `.PHONY` declaration for all targets. Document the Makefile targets in the project README.
+
+---
+
+## Task 44: Color-coded SHA segment based on commit hash
+
+Add a feature to the client banner that derives a unique background color from the commit SHA and applies it to the SHA segment. This gives each deploy a visually distinct color, making it easy to tell at a glance whether two environments are running the same commit.
+
+1. Create `client/src/sha-color.js` exporting `getShaColor(sha)`. Take the first 6 characters of the SHA and use them as a hex color (e.g. SHA `a1b2c3f...` → `#a1b2c3`). Adjust lightness to ensure readability against the banner's text color: for dark theme, ensure the color is light enough (min luminance threshold); for light theme, ensure it's dark enough. If `sha` is null or too short, return `null` (no color applied).
+2. In `client/src/dom.js` or the rendering logic, when the SHA segment is created, apply the derived color as a `background-color` on the SHA `<span>` via a CSS class with a CSS custom property (e.g. `--sha-color`) set on the element. Add the corresponding CSS rule inside the Shadow DOM stylesheet. Do not use inline `style=""` — use a class-based approach with the CSS custom property for CSP safety.
+3. Add a `data-sha-color` attribute (`"auto"` | `"off"`, default `"auto"`) to the config parser (Task 4) so users can disable this feature.
+4. Write `client/tests/sha-color.test.js` covering: 6-char hex SHAs produce valid CSS colors, same SHA always produces the same color, different SHAs produce different colors, null/short SHA returns null, luminance adjustment keeps colors readable on dark and light backgrounds, `data-sha-color="off"` disables the feature.
