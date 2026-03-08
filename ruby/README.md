@@ -5,7 +5,7 @@ Rack middleware that serves a `/buildbanner.json` endpoint with git info, deploy
 ## Requirements
 
 - **Ruby >= 3.1**
-- **Bundler >= 2.4** — older versions (e.g. 1.17.2) crash on Ruby 3.4+ due to removed `String#untaint`. Upgrade with: `gem install bundler`
+- **Bundler >= 2.4** — upgrade with: `gem install bundler`
 
 Run the preflight check to verify your environment:
 

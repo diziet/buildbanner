@@ -9,48 +9,34 @@ MIN_RUBY_MINOR=1
 MIN_BUNDLER_MAJOR=2
 MIN_BUNDLER_MINOR=4
 
-check_ruby() {
-  if ! command -v ruby &>/dev/null; then
-    echo "ERROR: Ruby is not installed. Install Ruby >= ${MIN_RUBY_MAJOR}.${MIN_RUBY_MINOR}."
+# Usage: check_version <cmd> <version_cmd> <min_major> <min_minor> <label> [install_hint]
+check_version() {
+  local cmd="$1" version_cmd="$2" min_major="$3" min_minor="$4" label="$5"
+  local install_hint="${6:-}"
+
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "ERROR: ${label} is not installed.${install_hint:+ ${install_hint}}"
     exit 1
   fi
 
-  local version
-  version=$(ruby -e 'puts RUBY_VERSION')
-  local major minor
+  local version major minor
+  version=$(eval "$version_cmd")
   major=$(echo "$version" | cut -d. -f1)
   minor=$(echo "$version" | cut -d. -f2)
 
-  if (( major < MIN_RUBY_MAJOR || (major == MIN_RUBY_MAJOR && minor < MIN_RUBY_MINOR) )); then
-    echo "ERROR: Ruby ${version} is too old. Minimum required: ${MIN_RUBY_MAJOR}.${MIN_RUBY_MINOR}."
-    echo "  Install a newer Ruby via rbenv, rvm, or your package manager."
+  if (( major < min_major || (major == min_major && minor < min_minor) )); then
+    echo "ERROR: ${label} ${version} is too old. Minimum required: ${min_major}.${min_minor}.${install_hint:+ ${install_hint}}"
     exit 1
   fi
 
-  echo "OK: Ruby ${version}"
-}
-
-check_bundler() {
-  if ! command -v bundle &>/dev/null; then
-    echo "ERROR: Bundler is not installed. Run: gem install bundler"
-    exit 1
-  fi
-
-  local version
-  version=$(bundle --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-  local major minor
-  major=$(echo "$version" | cut -d. -f1)
-  minor=$(echo "$version" | cut -d. -f2)
-
-  if (( major < MIN_BUNDLER_MAJOR || (major == MIN_BUNDLER_MAJOR && minor < MIN_BUNDLER_MINOR) )); then
-    echo "ERROR: Bundler ${version} is too old for Ruby 3.4+. Run: gem install bundler"
-    exit 1
-  fi
-
-  echo "OK: Bundler ${version}"
+  echo "OK: ${label} ${version}"
 }
 
 echo "Checking BuildBanner Ruby environment..."
-check_ruby
-check_bundler
+check_version ruby "ruby -e 'puts RUBY_VERSION'" \
+  "$MIN_RUBY_MAJOR" "$MIN_RUBY_MINOR" "Ruby" \
+  "Install via rbenv, rvm, or your package manager."
+check_version bundle "bundle --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'" \
+  "$MIN_BUNDLER_MAJOR" "$MIN_BUNDLER_MINOR" "Bundler" \
+  "Run: gem install bundler"
 echo "All checks passed."
