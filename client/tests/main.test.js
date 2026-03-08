@@ -167,6 +167,7 @@ describe("BuildBanner main", () => {
   });
 
   it("non-200 endpoint produces no banner and no error thrown", async () => {
+    vi.spyOn(console, "debug").mockImplementation(() => {});
     mockFetch.mockResolvedValue(mockResponse(null, { status: 500 }));
 
     await BuildBanner.init({ endpoint: "/test.json" });
@@ -176,6 +177,7 @@ describe("BuildBanner main", () => {
   });
 
   it("timeout produces no banner", async () => {
+    vi.spyOn(console, "debug").mockImplementation(() => {});
     vi.useFakeTimers();
     mockFetch.mockImplementation((_url, opts) => {
       return new Promise((_resolve, reject) => {

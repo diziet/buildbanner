@@ -10,6 +10,7 @@ describe("DOM module", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     document.body.innerHTML = "";
     document.head.querySelectorAll("style").forEach((s) => s.remove());
   });
@@ -146,6 +147,7 @@ describe("DOM module", () => {
     });
 
     it("returns null when document.body is null", () => {
+      vi.spyOn(console, "debug").mockImplementation(() => {});
       const origBody = document.body;
       Object.defineProperty(document, "body", {
         value: null,

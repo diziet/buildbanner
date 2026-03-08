@@ -1,5 +1,5 @@
 /** Tests for node/hono.js — BuildBanner Hono middleware integration. */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Hono } from 'hono';
 import { buildBannerHono } from '../hono.js';
 import {
@@ -200,7 +200,10 @@ describe('Hono middleware — token auth', () => {
 });
 
 describe('Hono middleware — internal error handling', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it('returns 500 with generic message when getBannerData throws', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     const app = new Hono();
     app.use('*', buildBannerHono({ _createBanner: throwingCreateBanner() }));
     const res = await req(app, 'GET', DEFAULT_PATH);

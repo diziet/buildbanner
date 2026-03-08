@@ -76,6 +76,7 @@ describe("env-hide integration", () => {
   });
 
   it("hides banner when env-hide matches response environment", async () => {
+    vi.spyOn(console, "debug").mockImplementation(() => {});
     const payload = { sha: "a1b2c3d", branch: "main", environment: "production" };
     mockFetch.mockResolvedValue(mockResponse(payload));
 
