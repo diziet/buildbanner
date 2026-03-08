@@ -8,5 +8,5 @@ Gem::Specification.new do |s|
   s.homepage    = "https://github.com/diziet/buildbanner"
   s.files       = Dir["lib/**/*.rb"]
   s.require_paths = ["lib"]
-  s.required_ruby_version = ">= 2.7"
+  s.required_ruby_version = ">= 3.1"
 end

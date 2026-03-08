@@ -2,6 +2,17 @@
 
 Rack middleware that serves a `/buildbanner.json` endpoint with git info, deploy metadata, and custom fields. Works with any Rack-based framework including Rails and Sinatra.
 
+## Requirements
+
+- **Ruby >= 3.1**
+- **Bundler >= 2.4** — upgrade with: `gem install bundler`
+
+Run the preflight check to verify your environment:
+
+```bash
+bash scripts/check-env.sh
+```
+
 ## Installation
 
 Add to your Gemfile:
