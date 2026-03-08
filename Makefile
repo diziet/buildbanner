@@ -1,6 +1,7 @@
 .PHONY: install test test-js test-python test-ruby build clean
 
 install:
+	# npm workspaces (root package.json) covers client/ and node/
 	npm install
 	cd python && pip install -e ".[test]"
 	cd ruby && bundle install
@@ -10,7 +11,7 @@ test: test-js test-python test-ruby
 test-js:
 	npm test
 	cd client && npm test
-	cd node && npm test
+	cd node && npx vitest run
 
 test-python:
 	cd python && pytest
