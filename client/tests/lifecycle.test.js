@@ -67,8 +67,10 @@ describe("BuildBanner lifecycle", () => {
   it("refresh() with endpoint failure keeps last data", async () => {
     await initBanner();
 
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
     mockFetch.mockResolvedValue(mockResponse(null, { status: 500 }));
     await BuildBanner.refresh();
+    debugSpy.mockRestore();
 
     expect(segmentText(getHost(), "sha")).toBe("a1b2c3d");
   });

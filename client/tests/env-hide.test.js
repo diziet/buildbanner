@@ -76,6 +76,7 @@ describe("env-hide integration", () => {
   });
 
   it("hides banner when env-hide matches response environment", async () => {
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
     const payload = { sha: "a1b2c3d", branch: "main", environment: "production" };
     mockFetch.mockResolvedValue(mockResponse(payload));
 
@@ -86,6 +87,7 @@ describe("env-hide integration", () => {
 
     const host = document.querySelector("[data-testid='buildbanner']");
     expect(host).toBeNull();
+    debugSpy.mockRestore();
   });
 
   it("shows banner when env-hide does not match response environment", async () => {

@@ -146,6 +146,7 @@ describe("DOM module", () => {
     });
 
     it("returns null when document.body is null", () => {
+      const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
       const origBody = document.body;
       Object.defineProperty(document, "body", {
         value: null,
@@ -162,6 +163,7 @@ describe("DOM module", () => {
           writable: true,
           configurable: true,
         });
+        debugSpy.mockRestore();
       }
     });
   });

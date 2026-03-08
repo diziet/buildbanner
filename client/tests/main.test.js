@@ -167,15 +167,18 @@ describe("BuildBanner main", () => {
   });
 
   it("non-200 endpoint produces no banner and no error thrown", async () => {
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
     mockFetch.mockResolvedValue(mockResponse(null, { status: 500 }));
 
     await BuildBanner.init({ endpoint: "/test.json" });
 
     const host = document.querySelector("[data-testid='buildbanner']");
     expect(host).toBeNull();
+    debugSpy.mockRestore();
   });
 
   it("timeout produces no banner", async () => {
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
     vi.useFakeTimers();
     mockFetch.mockImplementation((_url, opts) => {
       return new Promise((_resolve, reject) => {
@@ -192,6 +195,7 @@ describe("BuildBanner main", () => {
     const host = document.querySelector("[data-testid='buildbanner']");
     expect(host).toBeNull();
     vi.useRealTimers();
+    debugSpy.mockRestore();
   });
 
   it("singleton uses only Symbol.for('buildbanner')", async () => {
