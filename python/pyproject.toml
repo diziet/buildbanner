@@ -20,3 +20,12 @@ Issues = "https://github.com/diziet/buildbanner/issues"
 
 [project.optional-dependencies]
 test = ["pytest"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    # TODO: remove once pytest-asyncio drops AbstractEventLoopPolicy usage
+    # https://github.com/pytest-dev/pytest-asyncio/issues/1105
+    "ignore:'asyncio.AbstractEventLoopPolicy' is deprecated:DeprecationWarning:pytest_asyncio.plugin",
+]
