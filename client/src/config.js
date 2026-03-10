@@ -3,6 +3,7 @@
 const VALID_POSITIONS = ["top", "bottom"];
 const VALID_THEMES = ["dark", "light", "auto"];
 const VALID_DISMISS = ["session", "permanent", "none"];
+const VALID_SHA_COLOR = ["auto", "off"];
 
 const MIN_HEIGHT = 24;
 const MAX_HEIGHT = 48;
@@ -22,6 +23,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   manual: false,
   zIndex: 999999,
   hostPatterns: [],
+  shaColor: "auto",
 });
 
 /** Parse a boolean data attribute string. */
@@ -88,6 +90,7 @@ export function parseConfig(scriptElement) {
     manual: _parseBool(scriptElement.getAttribute("data-manual"), DEFAULT_CONFIG.manual),
     zIndex: DEFAULT_CONFIG.zIndex,
     hostPatterns: [...DEFAULT_CONFIG.hostPatterns],
+    shaColor: _validateEnum(scriptElement.getAttribute("data-sha-color"), VALID_SHA_COLOR, DEFAULT_CONFIG.shaColor),
   };
 }
 
@@ -101,6 +104,7 @@ function _validateConfig(config) {
   config.debug = _parseBool(config.debug, DEFAULT_CONFIG.debug);
   config.push = _parseBool(config.push, DEFAULT_CONFIG.push);
   config.manual = _parseBool(config.manual, DEFAULT_CONFIG.manual);
+  config.shaColor = _validateEnum(config.shaColor, VALID_SHA_COLOR, DEFAULT_CONFIG.shaColor);
 
   // Defensive copies to prevent shared mutable array references
   if (Array.isArray(config.hostPatterns)) {
