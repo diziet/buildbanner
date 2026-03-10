@@ -46,9 +46,10 @@ describe("getShaColor", () => {
   });
 
   it("dark theme adjusts dark colors to be lighter", () => {
-    // 000000 is pure black — should be lightened for dark theme
+    // 000000 is pure black — should be lightened but not to white
     const color = getShaColor("000000abcdef", "dark");
     expect(color).not.toBe("#000000");
+    expect(color).not.toBe("#ffffff");
     expect(color).toMatch(/^#[0-9a-f]{6}$/);
   });
 

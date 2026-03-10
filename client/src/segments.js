@@ -141,10 +141,20 @@ function _buildStatusContainer(testsSegment, buildSegment, isLive) {
   return container;
 }
 
-/** Render all segments into the wrapper in canonical order. Returns { tickerTimerId }. */
+/** Resolve effective theme, handling "auto" via matchMedia. */
+function _resolveEffectiveTheme(theme) {
+  if (theme === "light") return "light";
+  if (theme === "auto" && typeof window !== "undefined" && window.matchMedia) {
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+  return "dark";
+}
+
+/** Render all segments into the wrapper in canonical order. Returns { tickerTimerId, shaColor }. */
 export function renderSegments(data, wrapper, config = {}, previousStatuses = {}) {
   const segments = [];
   let tickerTimerId = null;
+  let shaColor = null;
   const hostPatterns = config.hostPatterns || [];
 
   // 1. app_name
@@ -170,10 +180,10 @@ export function renderSegments(data, wrapper, config = {}, previousStatuses = {}
     const shaEl = _createMaybeLinkedSegment("sha", data.sha, shaLink);
     shaEl.classList.add("bb-clickable");
     if (config.shaColor !== "off") {
-      const theme = config.theme === "light" ? "light" : "dark";
-      const color = getShaColor(shaValue, theme);
+      const effectiveTheme = _resolveEffectiveTheme(config.theme);
+      const color = getShaColor(shaValue, effectiveTheme);
       if (color) {
-        shaEl.style.setProperty("--sha-color", color);
+        shaColor = color;
         shaEl.classList.add("bb-sha-color");
       }
     }
@@ -234,5 +244,5 @@ export function renderSegments(data, wrapper, config = {}, previousStatuses = {}
     _appendSegment(wrapper, segments[i], i === 0);
   }
 
-  return { tickerTimerId };
+  return { tickerTimerId, shaColor };
 }

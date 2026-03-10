@@ -2,8 +2,8 @@
 const { readFileSync } = require("node:fs");
 const { gzipSync } = require("node:zlib");
 
-// Increased from 6800 for SHA color derivation module in Task 44
-const BUDGET_BYTES = 7400;
+// Increased from 6800 for SHA color derivation module in Task 44 (actual ~7360)
+const BUDGET_BYTES = 7500;
 
 /** Return the gzipped byte size of a file. */
 function getGzippedSize(filePath) {

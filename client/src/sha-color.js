@@ -23,11 +23,12 @@ function _clamp(value) {
 function _adjustForDarkTheme(r, g, b) {
   const lum = _luminance(r, g, b);
   if (lum >= MIN_LUMINANCE_DARK) return { r, g, b };
-  const factor = Math.sqrt(MIN_LUMINANCE_DARK / Math.max(lum, 0.001));
+  const factor = Math.min(Math.sqrt(MIN_LUMINANCE_DARK / Math.max(lum, 0.001)), 4);
+  const base = Math.max(r, g, b) < 10 ? 80 : 0;
   return {
-    r: _clamp(r * factor + (factor - 1) * 40),
-    g: _clamp(g * factor + (factor - 1) * 40),
-    b: _clamp(b * factor + (factor - 1) * 40),
+    r: _clamp(r * factor + base),
+    g: _clamp(g * factor + base),
+    b: _clamp(b * factor + base),
   };
 }
 
@@ -51,9 +52,10 @@ function _toHex(r, g, b) {
 
 /**
  * Derive a background color from a commit SHA.
- * @param {string|null} sha - The commit SHA (at least 6 characters).
+ * Returns null if sha is null, not a string, or shorter than 6 hex characters.
+ * @param {*} sha - The commit SHA (returns null if invalid or too short).
  * @param {"dark"|"light"} theme - Current banner theme for readability adjustment.
- * @returns {string|null} Hex color string or null if SHA is invalid.
+ * @returns {string|null} Hex color string or null.
  */
 export function getShaColor(sha, theme = "dark") {
   if (!sha || typeof sha !== "string" || sha.length < 6) return null;

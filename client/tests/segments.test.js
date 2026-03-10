@@ -284,34 +284,52 @@ describe("renderSegments", () => {
     expect(el.textContent).toBe("\u{1F7E2} built 2m ago");
   });
 
-  it("sha segment gets bb-sha-color class when shaColor is auto", () => {
-    renderSegments({ sha: "a1b2c3d", sha_full: "a1b2c3d4e5f6" }, wrapper, { shaColor: "auto" });
+  it("sha segment gets bb-sha-color class and returns shaColor when shaColor is auto", () => {
+    const { shaColor } = renderSegments({ sha: "a1b2c3d", sha_full: "a1b2c3d4e5f6" }, wrapper, { shaColor: "auto" });
     const el = wrapper.querySelector("[data-segment='sha']");
     expect(el.classList.contains("bb-sha-color")).toBe(true);
-    expect(el.style.getPropertyValue("--sha-color")).toMatch(/^#[0-9a-f]{6}$/);
+    expect(shaColor).toMatch(/^#[0-9a-f]{6}$/);
   });
 
   it("sha segment does not get bb-sha-color class when shaColor is off", () => {
-    renderSegments({ sha: "a1b2c3d", sha_full: "a1b2c3d4e5f6" }, wrapper, { shaColor: "off" });
+    const { shaColor } = renderSegments({ sha: "a1b2c3d", sha_full: "a1b2c3d4e5f6" }, wrapper, { shaColor: "off" });
     const el = wrapper.querySelector("[data-segment='sha']");
     expect(el.classList.contains("bb-sha-color")).toBe(false);
+    expect(shaColor).toBe(null);
   });
 
   it("sha color uses sha_full for deriving color", () => {
-    renderSegments({ sha: "a1b2c3d", sha_full: "ffaabb1234567890" }, wrapper, { shaColor: "auto" });
-    const el = wrapper.querySelector("[data-segment='sha']");
-    expect(el.style.getPropertyValue("--sha-color")).toMatch(/^#[0-9a-f]{6}$/);
+    const { shaColor } = renderSegments({ sha: "a1b2c3d", sha_full: "ffaabb1234567890" }, wrapper, { shaColor: "auto" });
+    expect(shaColor).toMatch(/^#[0-9a-f]{6}$/);
   });
 
   it("sha color adjusts for light theme", () => {
-    renderSegments({ sha: "a1b2c3d", sha_full: "a1b2c3d4e5f6" }, wrapper, { shaColor: "auto", theme: "light" });
+    const { shaColor } = renderSegments({ sha: "a1b2c3d", sha_full: "a1b2c3d4e5f6" }, wrapper, { shaColor: "auto", theme: "light" });
     const el = wrapper.querySelector("[data-segment='sha']");
     expect(el.classList.contains("bb-sha-color")).toBe(true);
+    expect(shaColor).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("sha color resolves auto theme via matchMedia", () => {
+    const original = window.matchMedia;
+    window.matchMedia = (q) => ({ matches: q.includes("light"), media: q });
+    const { shaColor: lightColor } = renderSegments(
+      { sha: "a1b2c3d", sha_full: "a1b2c3d4e5f6" }, wrapper, { shaColor: "auto", theme: "auto" },
+    );
+    expect(lightColor).toMatch(/^#[0-9a-f]{6}$/);
+    window.matchMedia = original;
   });
 
   it("sha color not applied when sha too short for color derivation", () => {
-    renderSegments({ sha: "abc" }, wrapper, { shaColor: "auto" });
+    const { shaColor } = renderSegments({ sha: "abc" }, wrapper, { shaColor: "auto" });
     const el = wrapper.querySelector("[data-segment='sha']");
     expect(el.classList.contains("bb-sha-color")).toBe(false);
+    expect(shaColor).toBe(null);
+  });
+
+  it("no inline style attribute on sha element (CSP safety)", () => {
+    renderSegments({ sha: "a1b2c3d", sha_full: "a1b2c3d4e5f6" }, wrapper, { shaColor: "auto" });
+    const el = wrapper.querySelector("[data-segment='sha']");
+    expect(el.getAttribute("style")).toBe(null);
   });
 });
