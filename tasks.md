@@ -355,3 +355,9 @@ Add a feature to the client banner that derives a unique background color from t
 2. In `client/src/dom.js` or the rendering logic, when the SHA segment is created, apply the derived color as a `background-color` on the SHA `<span>` via a CSS class with a CSS custom property (e.g. `--sha-color`) set on the element. Add the corresponding CSS rule inside the Shadow DOM stylesheet. Do not use inline `style=""` — use a class-based approach with the CSS custom property for CSP safety.
 3. Add a `data-sha-color` attribute (`"auto"` | `"off"`, default `"auto"`) to the config parser (Task 4) so users can disable this feature.
 4. Write `client/tests/sha-color.test.js` covering: 6-char hex SHAs produce valid CSS colors, same SHA always produces the same color, different SHAs produce different colors, null/short SHA returns null, luminance adjustment keeps colors readable on dark and light backgrounds, `data-sha-color="off"` disables the feature.
+
+---
+
+## Task 45: Replace unpkg CDN reference with self-hosting in Quick Start
+
+The Quick Start section in `docs/README.md` references `https://unpkg.com/buildbanner@latest/buildbanner.min.js`, but unpkg serves from the npm registry and the package is not published to npm. This URL will not resolve. Replace the CDN `<script>` tag with the self-hosted approach: instruct users to copy `buildbanner.min.js` into their static assets directory and reference it locally (`/static/buildbanner.min.js`). Link to `docs/self-hosting.md` for detailed setup instructions. Remove any other `unpkg.com` references if present elsewhere in the docs.
