@@ -4,6 +4,7 @@ import { formatUptime, formatDeployAge, startUptimeTicker } from "./time.js";
 import { createLink } from "./links.js";
 import { attachCopyHandler } from "./clipboard.js";
 import { createLogger } from "./logger.js";
+import { getShaColor } from "./sha-color.js";
 
 const STATUS_DOTS = {
   pass: "\u{1F7E2}",
@@ -162,12 +163,20 @@ export function renderSegments(data, wrapper, config = {}, previousStatuses = {}
     segments.push(_createMaybeLinkedSegment("branch", data.branch, branchLink));
   }
 
-  // 4. sha (with click-to-copy)
+  // 4. sha (with click-to-copy and optional color)
   if (data.sha) {
     const shaValue = data.sha_full || data.sha;
     const shaLink = createLink(data.repo_url, "commit", shaValue, hostPatterns);
     const shaEl = _createMaybeLinkedSegment("sha", data.sha, shaLink);
     shaEl.classList.add("bb-clickable");
+    if (config.shaColor !== "off") {
+      const theme = config.theme === "light" ? "light" : "dark";
+      const color = getShaColor(shaValue, theme);
+      if (color) {
+        shaEl.style.setProperty("--sha-color", color);
+        shaEl.classList.add("bb-sha-color");
+      }
+    }
     const logger = createLogger(config.debug);
     attachCopyHandler(shaEl, shaValue, logger);
     segments.push(shaEl);

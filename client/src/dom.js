@@ -61,6 +61,11 @@ function _buildStyles(config, positionMode) {
     .bb-clickable {
       cursor: pointer;
     }
+    .bb-sha-color {
+      background-color: var(--sha-color);
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
     .bb-live-region {
       display: contents;
     }
