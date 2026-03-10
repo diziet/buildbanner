@@ -31,6 +31,7 @@ describe("DEFAULT_CONFIG", () => {
     expect(DEFAULT_CONFIG.manual).toBe(false);
     expect(DEFAULT_CONFIG.zIndex).toBe(999999);
     expect(DEFAULT_CONFIG.hostPatterns).toEqual([]);
+    expect(DEFAULT_CONFIG.shaColor).toBe("auto");
   });
 
   it("is frozen", () => {
@@ -185,6 +186,16 @@ describe("parseConfig", () => {
   it("does not include hostPatterns from data attributes", () => {
     const config = parseConfig(mockScript());
     expect(config.hostPatterns).toEqual([]);
+  });
+
+  it("parses data-sha-color as valid enum", () => {
+    expect(parseConfig(mockScript({ "sha-color": "auto" })).shaColor).toBe("auto");
+    expect(parseConfig(mockScript({ "sha-color": "off" })).shaColor).toBe("off");
+    expect(parseConfig(mockScript({ "sha-color": "invalid" })).shaColor).toBe("auto");
+  });
+
+  it("defaults shaColor to auto when not set", () => {
+    expect(parseConfig(mockScript()).shaColor).toBe("auto");
   });
 
   it("returns independent hostPatterns arrays across calls", () => {

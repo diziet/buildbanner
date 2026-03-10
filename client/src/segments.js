@@ -4,6 +4,7 @@ import { formatUptime, formatDeployAge, startUptimeTicker } from "./time.js";
 import { createLink } from "./links.js";
 import { attachCopyHandler } from "./clipboard.js";
 import { createLogger } from "./logger.js";
+import { getShaColor } from "./sha-color.js";
 
 const STATUS_DOTS = {
   pass: "\u{1F7E2}",
@@ -140,10 +141,20 @@ function _buildStatusContainer(testsSegment, buildSegment, isLive) {
   return container;
 }
 
-/** Render all segments into the wrapper in canonical order. Returns { tickerTimerId }. */
+/** Resolve effective theme, handling "auto" via matchMedia. */
+function _resolveEffectiveTheme(theme) {
+  if (theme === "light") return "light";
+  if (theme === "auto" && typeof window !== "undefined" && window.matchMedia) {
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+  return "dark";
+}
+
+/** Render all segments into the wrapper in canonical order. Returns { tickerTimerId, shaColor }. */
 export function renderSegments(data, wrapper, config = {}, previousStatuses = {}) {
   const segments = [];
   let tickerTimerId = null;
+  let shaColor = null;
   const hostPatterns = config.hostPatterns || [];
 
   // 1. app_name
@@ -162,12 +173,20 @@ export function renderSegments(data, wrapper, config = {}, previousStatuses = {}
     segments.push(_createMaybeLinkedSegment("branch", data.branch, branchLink));
   }
 
-  // 4. sha (with click-to-copy)
+  // 4. sha (with click-to-copy and optional color)
   if (data.sha) {
     const shaValue = data.sha_full || data.sha;
     const shaLink = createLink(data.repo_url, "commit", shaValue, hostPatterns);
     const shaEl = _createMaybeLinkedSegment("sha", data.sha, shaLink);
     shaEl.classList.add("bb-clickable");
+    if (config.shaColor !== "off") {
+      const effectiveTheme = _resolveEffectiveTheme(config.theme);
+      const color = getShaColor(shaValue, effectiveTheme);
+      if (color) {
+        shaColor = color;
+        shaEl.classList.add("bb-sha-color");
+      }
+    }
     const logger = createLogger(config.debug);
     attachCopyHandler(shaEl, shaValue, logger);
     segments.push(shaEl);
@@ -225,5 +244,5 @@ export function renderSegments(data, wrapper, config = {}, previousStatuses = {}
     _appendSegment(wrapper, segments[i], i === 0);
   }
 
-  return { tickerTimerId };
+  return { tickerTimerId, shaColor };
 }

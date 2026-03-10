@@ -105,7 +105,8 @@ async function init(opts = {}) {
 
     const { host, shadowRoot, wrapper, fallbackStyle } = result;
     const previousStatuses = {};
-    const { tickerTimerId } = renderSegments(data, wrapper, config, previousStatuses);
+    const { tickerTimerId, shaColor } = renderSegments(data, wrapper, config, previousStatuses);
+    _injectShaColorStyle(shadowRoot, shaColor);
 
     const instance = {
       host, shadowRoot, wrapper, fallbackStyle, tickerTimerId,
@@ -138,6 +139,19 @@ async function init(opts = {}) {
   }
 }
 
+/** Inject or update a <style> rule for the SHA background color in Shadow DOM. */
+function _injectShaColorStyle(shadowRoot, shaColor) {
+  if (!shadowRoot) return;
+  const existingId = "bb-sha-color-style";
+  const existing = shadowRoot.getElementById(existingId);
+  if (existing) existing.remove();
+  if (!shaColor) return;
+  const style = document.createElement("style");
+  style.id = existingId;
+  style.textContent = `.bb-sha-color { --sha-color: ${shaColor}; }`;
+  shadowRoot.appendChild(style);
+}
+
 /** Re-render segments from current instance data. */
 function _rerender(instance) {
   if (instance.tickerTimerId) {
@@ -148,6 +162,7 @@ function _rerender(instance) {
     instance.data, instance.wrapper, instance.config, instance.previousStatuses,
   );
   instance.tickerTimerId = rendered.tickerTimerId;
+  _injectShaColorStyle(instance.shadowRoot, rendered.shaColor);
 }
 
 /** Trigger a manual re-fetch and update segments. */
