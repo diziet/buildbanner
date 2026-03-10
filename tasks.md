@@ -361,3 +361,9 @@ Add a feature to the client banner that derives a unique background color from t
 ## Task 45: Replace unpkg CDN reference with self-hosting in Quick Start
 
 The Quick Start section in `docs/README.md` references `https://unpkg.com/buildbanner@latest/buildbanner.min.js`, but unpkg serves from the npm registry and the package is not published to npm. This URL will not resolve. Replace the CDN `<script>` tag with the self-hosted approach: instruct users to copy `buildbanner.min.js` into their static assets directory and reference it locally (`/static/buildbanner.min.js`). Link to `docs/self-hosting.md` for detailed setup instructions. Remove any other `unpkg.com` references if present elsewhere in the docs.
+
+---
+
+## Task 46: Replace eval in ruby/scripts/check-env.sh
+
+`ruby/scripts/check-env.sh` line 23 uses `eval` to execute version commands (`version=$(eval "$version_cmd")`). While the inputs are currently hardcoded, `eval` is a shell anti-pattern that risks command injection if the function is ever reused with external input (ShellCheck SC2294). Replace the generic `check_version` function with direct version checks that avoid `eval` entirely — call `ruby -e "puts RUBY_VERSION"` and `bundle --version | grep -oE ...` directly instead of passing them as strings through `eval`.
