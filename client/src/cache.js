@@ -55,6 +55,20 @@ export function readCache(endpoint) {
 }
 
 /**
+ * Fast check for cache key existence without JSON parsing.
+ * Used at script parse time to decide whether to render immediately.
+ */
+export function hasCacheEntry(endpoint) {
+  if (!_isStorageAvailable()) return false;
+
+  try {
+    return localStorage.getItem(_storageKey(endpoint)) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Write banner data to localStorage cache.
  * Silently fails if localStorage is unavailable.
  */

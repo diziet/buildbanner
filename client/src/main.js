@@ -11,7 +11,7 @@ import { startPolling, stopPolling } from "./polling.js";
 import { applyPush, removePush, resolvePositionMode } from "./push.js";
 import { shouldHide } from "./env-hide.js";
 import { startThemeObserver } from "./theme-observer.js";
-import { readCache, writeCache } from "./cache.js";
+import { readCache, writeCache, hasCacheEntry } from "./cache.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
@@ -368,8 +368,30 @@ function _autoInit() {
   init(config).catch(() => { /* Never throw — auto-init is fire-and-forget. */ });
 }
 
+/** Check if a script element has warm cache available for immediate render. */
+function _hasCachedData(scriptEl) {
+  if (!scriptEl) return false;
+  if (scriptEl.getAttribute("data-cache") !== "true") return false;
+  const endpoint = scriptEl.getAttribute("data-endpoint");
+  if (!endpoint) return false;
+  return hasCacheEntry(endpoint);
+}
+
 if (typeof document !== "undefined") {
-  if (document.readyState === "loading") {
+  const scripts = document.querySelectorAll("script[src]");
+  let _scriptEl = null;
+  for (const s of scripts) {
+    if (s.src && s.src.includes("buildbanner")) {
+      _scriptEl = s;
+      break;
+    }
+  }
+
+  if (document.body && _hasCachedData(_scriptEl)) {
+    // Cache exists and body is available — render immediately
+    // to avoid flash between page navigations
+    _autoInit();
+  } else if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", _autoInit);
   } else {
     _autoInit();
