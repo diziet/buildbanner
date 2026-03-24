@@ -480,3 +480,72 @@ The banner flashes on every page load because it waits for the `/buildbanner.jso
 - Rebuild dist
 
 ---
+
+## Task 51: Render cached banner at script parse time to eliminate navigation flash
+
+**Status:** Pending
+**Depends on:** Task 50 (localStorage cache)
+
+### Bug
+
+When `data-cache="true"` is set and the cache is warm, the banner still flashes on page navigation (full page loads, not SPA). The banner disappears for 1-2 frames between pages because `_autoInit` defers to `DOMContentLoaded`:
+
+```js
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", _autoInit);
+} else {
+    _autoInit();
+}
+```
+
+The script tag is in `<body>` (inside the site header partial), so `readyState` is `"loading"` when the script executes. It registers for DOMContentLoaded, but the browser may paint a frame without the banner before that event fires. On every page navigation: old banner destroyed → new page renders → DOMContentLoaded → banner recreated. The gap between render and DOMContentLoaded causes a visible flash.
+
+### Fix
+
+When cache is available AND `document.body` exists, render the banner **immediately at script parse time** instead of waiting for DOMContentLoaded. The script runs synchronously during HTML parsing — if `document.body` already exists (it does, since the `<script>` tag is inside `<body>`), all the APIs needed (`createElement`, `insertBefore`, `localStorage`) are available.
+
+Change `_autoInit` / the auto-init block in `main.js`:
+
+```js
+if (typeof document !== "undefined") {
+    if (document.body && _hasCachedData(scriptEl)) {
+        // Cache exists and body is available — render immediately
+        // to avoid flash between page navigations
+        _autoInit();
+    } else if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", _autoInit);
+    } else {
+        _autoInit();
+    }
+}
+```
+
+Where `_hasCachedData` is a lightweight check: read the script element's `data-cache` and `data-endpoint` attributes, then check if `localStorage` has a valid cache entry. This check must be fast (no JSON parse needed — just check key existence).
+
+### Constraints
+
+- Only applies when `data-cache="true"` AND cache key exists in localStorage AND `document.body` exists
+- Without cache (first visit), behavior is unchanged — wait for DOMContentLoaded
+- Without `data-cache`, behavior is unchanged
+- `_autoInit` must still be idempotent (the existing `_getInstance()` guard handles this)
+- The `readCache` function already validates TTL, so stale entries won't trigger early render
+
+### Edge case: body not yet available
+
+If the script somehow loads in `<head>` (before `<body>` exists), `document.body` is null. In that case, fall back to DOMContentLoaded as before. The `createBannerHost` function already guards against this (line 363: `if (!document.body) return null`).
+
+### Files
+
+- `client/src/main.js` — change auto-init logic to render immediately when cache is warm
+- `client/src/cache.js` — optionally add a `hasCacheEntry(endpoint)` fast-path that checks key existence without full JSON parse
+- Rebuild dist
+
+### Tests
+
+- With warm cache + body available: banner renders synchronously at script parse time (no DOMContentLoaded wait)
+- With warm cache + no body: falls back to DOMContentLoaded
+- Without cache: falls back to DOMContentLoaded (unchanged)
+- With `data-cache="false"`: falls back to DOMContentLoaded (unchanged)
+- Banner content matches cached data; background refresh updates if stale
+
+---
