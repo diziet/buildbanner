@@ -5,25 +5,27 @@
  * @param {object} config - Banner configuration.
  * @param {number} bannerHeight - Height of the banner in pixels.
  * @param {object} logger - Logger instance.
- * @returns {{ mode: string, originalPadding: number }}
+ * @returns {{ mode: string, originalPadding: number, originalBg: string }}
  */
 export function applyPush(config, bannerHeight, logger) {
   const prop = _paddingProperty(config);
   const existing = _readPadding(prop);
 
   if (!config.push) {
-    return { mode: "overlay", originalPadding: existing };
+    return { mode: "overlay", originalPadding: existing, originalBg: "" };
   }
 
   if (existing !== 0) {
     if (logger) {
       logger.log("Push mode fell back to overlay due to existing padding");
     }
-    return { mode: "overlay", originalPadding: existing };
+    return { mode: "overlay", originalPadding: existing, originalBg: "" };
   }
 
+  const originalBg = document.documentElement.style.backgroundColor || "";
   document.documentElement.style[prop] = `${bannerHeight}px`;
-  return { mode: "push", originalPadding: 0 };
+  _matchRootBackground(logger);
+  return { mode: "push", originalPadding: 0, originalBg };
 }
 
 /**
@@ -40,7 +42,7 @@ export function applyPush(config, bannerHeight, logger) {
  * case where external code modified padding after init.
  *
  * @param {number} bannerHeight - Height of the banner in pixels.
- * @param {{ mode: string, originalPadding: number }} pushState - State from applyPush.
+ * @param {{ mode: string, originalPadding: number, originalBg: string }} pushState - State from applyPush.
  * @param {object} config - Banner configuration.
  */
 export function removePush(bannerHeight, pushState, config) {
@@ -56,6 +58,8 @@ export function removePush(bannerHeight, pushState, config) {
     const restored = Math.max(0, current - bannerHeight);
     document.documentElement.style[prop] = restored ? `${restored}px` : "";
   }
+
+  document.documentElement.style.backgroundColor = pushState.originalBg || "";
 }
 
 /** Map push mode result to CSS position value. */
@@ -72,4 +76,34 @@ function _paddingProperty(config) {
 function _readPadding(prop) {
   const raw = getComputedStyle(document.documentElement)[prop];
   return parseInt(raw, 10) || 0;
+}
+
+/**
+ * Copy the computed background-color of <body> to <html> so push-mode
+ * padding doesn't expose a bare white strip on dark or themed pages.
+ * Only acts when <html> has no explicit inline background already set
+ * and <body> has a non-transparent computed background.
+ */
+function _matchRootBackground(logger) {
+  if (!document.body) return;
+
+  const bodyBg = getComputedStyle(document.body).backgroundColor;
+  if (!bodyBg || _isTransparent(bodyBg)) return;
+
+  const htmlBg = getComputedStyle(document.documentElement).backgroundColor;
+  if (!_isTransparent(htmlBg)) return;
+
+  document.documentElement.style.backgroundColor = bodyBg;
+  if (logger) {
+    logger.log(`Matched <html> background to <body>: ${bodyBg}`);
+  }
+}
+
+/** Check whether a CSS color string is transparent. */
+function _isTransparent(color) {
+  if (!color) return true;
+  const lower = color.toLowerCase().replace(/\s/g, "");
+  if (lower === "transparent") return true;
+  if (lower === "rgba(0,0,0,0)") return true;
+  return false;
 }
