@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 describe("cache module", () => {
   let readCache;
   let writeCache;
+  let hasCacheEntry;
 
   beforeEach(async () => {
     localStorage.clear();
@@ -14,6 +15,7 @@ describe("cache module", () => {
     const mod = await import("../src/cache.js");
     readCache = mod.readCache;
     writeCache = mod.writeCache;
+    hasCacheEntry = mod.hasCacheEntry;
   });
 
   afterEach(() => {
@@ -135,6 +137,28 @@ describe("cache module", () => {
     localStorage.getItem = () => { throw new Error("SecurityError"); };
 
     expect(readCache("/buildbanner.json")).toBeNull();
+    localStorage.getItem = originalGetItem;
+  });
+
+  it("hasCacheEntry returns false when no cache exists", () => {
+    expect(hasCacheEntry("/buildbanner.json")).toBe(false);
+  });
+
+  it("hasCacheEntry returns true when cache key exists", () => {
+    writeCache("/buildbanner.json", { sha: "abc" }, "dark");
+    expect(hasCacheEntry("/buildbanner.json")).toBe(true);
+  });
+
+  it("hasCacheEntry returns false for different endpoint", () => {
+    writeCache("/other.json", { sha: "abc" }, "dark");
+    expect(hasCacheEntry("/buildbanner.json")).toBe(false);
+  });
+
+  it("hasCacheEntry degrades gracefully when localStorage throws", () => {
+    const originalGetItem = localStorage.getItem;
+    localStorage.getItem = () => { throw new Error("SecurityError"); };
+
+    expect(hasCacheEntry("/buildbanner.json")).toBe(false);
     localStorage.getItem = originalGetItem;
   });
 });
