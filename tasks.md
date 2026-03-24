@@ -471,7 +471,7 @@ The banner flashes on every page load because it waits for the `/buildbanner.jso
 - If localStorage is unavailable, fall back to normal fetch behavior.
 - If cached data is corrupt/unparseable, ignore it and fetch fresh.
 - Cache expires after 24 hours as a safety net (force fresh fetch).
-- `data-cache="false"` attribute disables caching entirely.
+- Opt-in via `data-cache="true"` attribute on the script tag. Default is off (no caching).
 
 ### Files
 
