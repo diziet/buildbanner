@@ -10,6 +10,7 @@ import { isDismissed, createDismissButton, resetDismiss } from "./dismiss.js";
 import { startPolling, stopPolling } from "./polling.js";
 import { applyPush, removePush, resolvePositionMode } from "./push.js";
 import { shouldHide } from "./env-hide.js";
+import { startThemeObserver } from "./theme-observer.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
@@ -42,6 +43,9 @@ function _teardown(instance) {
   }
   if (instance.pollingState) {
     stopPolling(instance.pollingState);
+  }
+  if (instance.themeObserver) {
+    instance.themeObserver.stop();
   }
   removePush(instance.bannerHeight, instance.pushState, instance.config);
   destroyBannerHost(instance.host, instance.fallbackStyle);
@@ -116,11 +120,12 @@ async function init(opts = {}) {
       const { tickerTimerId, shaColor } = renderSegments(data, wrapper, config, previousStatuses);
       _injectShaColorStyle(shadowRoot, shaColor);
 
+      const themeObserver = startThemeObserver(shadowRoot, config.theme);
       const instance = {
         host, shadowRoot, wrapper, fallbackStyle, tickerTimerId,
         pollingState: null, destroyed: false,
         pushState, bannerHeight, config,
-        data, previousStatuses,
+        data, previousStatuses, themeObserver,
       };
 
       if (config.poll > 0) {

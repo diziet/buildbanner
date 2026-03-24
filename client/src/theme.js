@@ -7,8 +7,8 @@ export const DARK_FG = constants.DARK_FG;
 export const LIGHT_BG = constants.LIGHT_BG;
 export const LIGHT_FG = constants.LIGHT_FG;
 
-const DARK_LINK = constants.DARK_LINK;
-const LIGHT_LINK = constants.LIGHT_LINK;
+export const DARK_LINK = constants.DARK_LINK;
+export const LIGHT_LINK = constants.LIGHT_LINK;
 
 export const FONT_FAMILY = constants.FONT_FAMILY;
 export const FONT_SIZE = constants.FONT_SIZE;
