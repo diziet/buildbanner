@@ -71,27 +71,7 @@ async function init(opts = {}) {
 
     const logger = createLogger(config.debug);
 
-    const data = await fetchBannerData(config.endpoint, {
-      token: config.token,
-      logger,
-    });
-
-    if (!data) {
-      _clearInstance();
-      return;
-    }
-
-    if (Array.isArray(config.envHide) && config.envHide.length > 0 && !data.environment) {
-      logger.log("envHide is configured but server response has no environment field");
-    }
-
-    if (shouldHide(config.envHide, data.environment)) {
-      logger.log("Banner hidden: environment '" + data.environment + "' is in envHide list");
-      pending.destroyed = true;
-      _clearInstance();
-      return;
-    }
-
+    // Render placeholder synchronously before fetch to eliminate flash
     const bannerHeight = parseInt(config.height, 10) || DEFAULT_HEIGHT;
     const pushState = applyPush(config, bannerHeight, logger);
     const positionMode = resolvePositionMode(pushState.mode);
@@ -104,35 +84,70 @@ async function init(opts = {}) {
     }
 
     const { host, shadowRoot, wrapper, fallbackStyle } = result;
-    const previousStatuses = {};
-    const { tickerTimerId, shaColor } = renderSegments(data, wrapper, config, previousStatuses);
-    _injectShaColorStyle(shadowRoot, shaColor);
 
-    const instance = {
-      host, shadowRoot, wrapper, fallbackStyle, tickerTimerId,
-      pollingState: null, destroyed: false,
-      pushState, bannerHeight, config,
-      data, previousStatuses,
-    };
-
-    if (config.poll > 0) {
-      const pollFetchFn = () => fetchBannerData(config.endpoint, { token: config.token, logger });
-      const pollOnData = (newData) => {
-        instance.data = newData;
-        _rerender(instance);
-      };
-      instance.pollingState = startPolling(config, pollFetchFn, pollOnData, logger);
-    }
-
-    const dismissBtn = createDismissButton(config, () => {
-      _teardown(instance);
-      _clearInstance();
+    const data = await fetchBannerData(config.endpoint, {
+      token: config.token,
+      logger,
     });
-    if (dismissBtn) {
-      wrapper.appendChild(dismissBtn);
+
+    if (!data) {
+      removePush(bannerHeight, pushState, config);
+      destroyBannerHost(host, fallbackStyle);
+      pending.destroyed = true;
+      _clearInstance();
+      return;
     }
 
-    _setInstance(instance);
+    try {
+      if (Array.isArray(config.envHide) && config.envHide.length > 0 && !data.environment) {
+        logger.log("envHide is configured but server response has no environment field");
+      }
+
+      if (shouldHide(config.envHide, data.environment)) {
+        logger.log("Banner hidden: environment '" + data.environment + "' is in envHide list");
+        removePush(bannerHeight, pushState, config);
+        destroyBannerHost(host, fallbackStyle);
+        pending.destroyed = true;
+        _clearInstance();
+        return;
+      }
+
+      const previousStatuses = {};
+      const { tickerTimerId, shaColor } = renderSegments(data, wrapper, config, previousStatuses);
+      _injectShaColorStyle(shadowRoot, shaColor);
+
+      const instance = {
+        host, shadowRoot, wrapper, fallbackStyle, tickerTimerId,
+        pollingState: null, destroyed: false,
+        pushState, bannerHeight, config,
+        data, previousStatuses,
+      };
+
+      if (config.poll > 0) {
+        const pollFetchFn = () => fetchBannerData(config.endpoint, { token: config.token, logger });
+        const pollOnData = (newData) => {
+          instance.data = newData;
+          _rerender(instance);
+        };
+        instance.pollingState = startPolling(config, pollFetchFn, pollOnData, logger);
+      }
+
+      const dismissBtn = createDismissButton(config, () => {
+        _teardown(instance);
+        _clearInstance();
+      });
+      if (dismissBtn) {
+        wrapper.appendChild(dismissBtn);
+      }
+
+      _setInstance(instance);
+    } catch (postFetchErr) {
+      removePush(bannerHeight, pushState, config);
+      destroyBannerHost(host, fallbackStyle);
+      pending.destroyed = true;
+      _clearInstance();
+      console.debug("[BuildBanner] post-fetch setup failed:", postFetchErr);
+    }
   } catch (err) {
     _clearInstance();
     console.debug("[BuildBanner] init failed:", err);

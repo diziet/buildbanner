@@ -166,7 +166,37 @@ describe("BuildBanner main", () => {
     expect(BuildBanner.isVisible()).toBe(false);
   });
 
-  it("non-200 endpoint produces no banner and no error thrown", async () => {
+  it("placeholder bar exists in DOM before fetch resolves", async () => {
+    let resolveFetch;
+    mockFetch.mockImplementation(() => new Promise((resolve) => {
+      resolveFetch = resolve;
+    }));
+
+    const initPromise = BuildBanner.init({ endpoint: "/test.json" });
+
+    // Placeholder should be in DOM before fetch resolves
+    await vi.waitFor(() => {
+      const host = document.querySelector("[data-testid='buildbanner']");
+      expect(host).not.toBeNull();
+    });
+
+    const host = document.querySelector("[data-testid='buildbanner']");
+    const shadow = host.shadowRoot;
+    const wrapper = shadow.querySelector(".bb-wrapper");
+
+    // Wrapper should exist but have no segment content yet
+    expect(wrapper).not.toBeNull();
+    expect(wrapper.querySelector("[data-segment]")).toBeNull();
+
+    // Resolve fetch and let init complete
+    resolveFetch(mockResponse({ sha: "abc1234", branch: "main" }));
+    await initPromise;
+
+    // After fetch, segments should be populated
+    expect(shadow.querySelector("[data-segment='sha']").textContent).toBe("abc1234");
+  });
+
+  it("non-200 endpoint removes placeholder and produces no banner", async () => {
     vi.spyOn(console, "debug").mockImplementation(() => {});
     mockFetch.mockResolvedValue(mockResponse(null, { status: 500 }));
 
@@ -176,7 +206,7 @@ describe("BuildBanner main", () => {
     expect(host).toBeNull();
   });
 
-  it("timeout produces no banner", async () => {
+  it("timeout removes placeholder and produces no banner", async () => {
     vi.spyOn(console, "debug").mockImplementation(() => {});
     vi.useFakeTimers();
     mockFetch.mockImplementation((_url, opts) => {
