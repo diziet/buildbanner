@@ -434,3 +434,49 @@ This way the initial CSS render already matches the host app's theme — zero fl
 - Rebuild dist after change
 
 ---
+
+## Task 50: Cache rendered banner in localStorage for instant subsequent loads
+
+### Context
+
+The banner flashes on every page load because it waits for the `/buildbanner.json` fetch before rendering text. After the first load, we know what the banner should look like — cache it for instant rendering on subsequent loads.
+
+### Behavior
+
+1. **First visit ever** — fetch JSON, render banner, store rendered state (HTML content, theme, SHA) in localStorage under `buildbanner_cache` key.
+
+2. **Subsequent visits** — script runs synchronously, reads `buildbanner_cache` from localStorage, immediately renders the cached banner content. Zero fetch wait, zero flash.
+
+3. **Background refresh** — after rendering from cache, still fetch `/buildbanner.json` in the background:
+   - If SHA matches cached SHA: update uptime silently, update cache. No visible change.
+   - If SHA differs (new deploy): re-render immediately with new data, update cache. User sees the banner update, which is correct.
+   - If fetch fails (server down, 404): keep showing cached data. Don't clear cache.
+
+4. **Cache key includes endpoint URL** — so different apps/ports don't share cache.
+
+### Cache format
+
+```json
+{
+  "endpoint": "/buildbanner.json",
+  "sha": "a1b2c3d",
+  "data": { ... full JSON response ... },
+  "theme": "dark",
+  "timestamp": 1711234567890
+}
+```
+
+### Safety
+
+- If localStorage is unavailable, fall back to normal fetch behavior.
+- If cached data is corrupt/unparseable, ignore it and fetch fresh.
+- Cache expires after 24 hours as a safety net (force fresh fetch).
+- `data-cache="false"` attribute disables caching entirely.
+
+### Files
+
+- `client/src/cache.js` — new module: read/write/validate localStorage cache
+- `client/src/main.js` — check cache before fetch, background refresh after render
+- Rebuild dist
+
+---
