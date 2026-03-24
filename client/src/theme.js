@@ -13,6 +13,15 @@ export const LIGHT_LINK = constants.LIGHT_LINK;
 export const FONT_FAMILY = constants.FONT_FAMILY;
 export const FONT_SIZE = constants.FONT_SIZE;
 
+/** Read data-theme from the host document's root element. */
+function _getHostDataTheme() {
+  try {
+    return document.documentElement.getAttribute("data-theme");
+  } catch {
+    return null;
+  }
+}
+
 /** Build CSS variable declarations for a color scheme. */
 function _colorVars(bg, fg, link) {
   return `--bb-bg: ${bg}; --bb-fg: ${fg}; --bb-link: ${link};`;
@@ -32,6 +41,10 @@ export function getThemeStyles(theme) {
   }
 
   if (theme === "auto") {
+    const hostTheme = _getHostDataTheme();
+    if (hostTheme === "dark" || hostTheme === "light") {
+      return getThemeStyles(hostTheme);
+    }
     return `
     :host {
       ${_colorVars(DARK_BG, DARK_FG, DARK_LINK)}

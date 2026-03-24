@@ -101,6 +101,37 @@ describe("theme module", () => {
     });
   });
 
+  describe("getThemeStyles auto with data-theme", () => {
+    afterEach(() => {
+      document.documentElement.removeAttribute("data-theme");
+    });
+
+    it("auto uses dark colors when data-theme is dark", () => {
+      document.documentElement.setAttribute("data-theme", "dark");
+      const css = getThemeStyles("auto");
+      expect(css).toContain(DARK_BG);
+      expect(css).not.toContain("prefers-color-scheme");
+    });
+
+    it("auto uses light colors when data-theme is light", () => {
+      document.documentElement.setAttribute("data-theme", "light");
+      const css = getThemeStyles("auto");
+      expect(css).toContain(LIGHT_BG);
+      expect(css).not.toContain("prefers-color-scheme");
+    });
+
+    it("auto falls back to prefers-color-scheme when data-theme absent", () => {
+      const css = getThemeStyles("auto");
+      expect(css).toContain("prefers-color-scheme");
+    });
+
+    it("auto ignores unrecognized data-theme values", () => {
+      document.documentElement.setAttribute("data-theme", "high-contrast");
+      const css = getThemeStyles("auto");
+      expect(css).toContain("prefers-color-scheme");
+    });
+  });
+
   describe("WCAG contrast ratios", () => {
     it("dark theme meets WCAG AA 4.5:1 contrast ratio", () => {
       const ratio = contrastRatio(DARK_BG, DARK_FG);
