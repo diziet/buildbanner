@@ -2,8 +2,8 @@
 const { readFileSync } = require("node:fs");
 const { gzipSync } = require("node:zlib");
 
-// Increased from 7500 for theme-observer module in Task 48 (actual ~7754)
-const BUDGET_BYTES = 8000;
+// Increased from 8000 for localStorage cache module in Task 50 (actual ~8277)
+const BUDGET_BYTES = 8500;
 
 /** Return the gzipped byte size of a file. */
 function getGzippedSize(filePath) {

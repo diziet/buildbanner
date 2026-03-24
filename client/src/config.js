@@ -24,6 +24,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   zIndex: 999999,
   hostPatterns: [],
   shaColor: "auto",
+  cache: false,
 });
 
 /** Parse a boolean data attribute string. */
@@ -91,6 +92,7 @@ export function parseConfig(scriptElement) {
     zIndex: DEFAULT_CONFIG.zIndex,
     hostPatterns: [...DEFAULT_CONFIG.hostPatterns],
     shaColor: _validateEnum(scriptElement.getAttribute("data-sha-color"), VALID_SHA_COLOR, DEFAULT_CONFIG.shaColor),
+    cache: _parseBool(scriptElement.getAttribute("data-cache"), DEFAULT_CONFIG.cache),
   };
 }
 
@@ -105,6 +107,7 @@ function _validateConfig(config) {
   config.push = _parseBool(config.push, DEFAULT_CONFIG.push);
   config.manual = _parseBool(config.manual, DEFAULT_CONFIG.manual);
   config.shaColor = _validateEnum(config.shaColor, VALID_SHA_COLOR, DEFAULT_CONFIG.shaColor);
+  config.cache = _parseBool(config.cache, DEFAULT_CONFIG.cache);
 
   // Defensive copies to prevent shared mutable array references
   if (Array.isArray(config.hostPatterns)) {
