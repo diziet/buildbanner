@@ -349,18 +349,20 @@ function _restoreMethods() {
   Object.assign(BuildBanner, ORIGINAL_METHODS);
 }
 
-/** Auto-detect script tag and initialize on DOMContentLoaded. */
-function _autoInit() {
+/** Find the BuildBanner script element in the document. */
+function _findScriptEl() {
   const scripts = document.querySelectorAll("script[src]");
-  let scriptEl = null;
-
   for (const s of scripts) {
     if (s.src && s.src.includes("buildbanner")) {
-      scriptEl = s;
-      break;
+      return s;
     }
   }
+  return null;
+}
 
+/** Auto-detect script tag and initialize on DOMContentLoaded. */
+function _autoInit() {
+  const scriptEl = _findScriptEl();
   if (!scriptEl) return;
   if (scriptEl.dataset.manual !== undefined) return;
 
@@ -371,6 +373,7 @@ function _autoInit() {
 /** Check if a script element has warm cache available for immediate render. */
 function _hasCachedData(scriptEl) {
   if (!scriptEl) return false;
+  if (scriptEl.dataset.manual !== undefined) return false;
   if (scriptEl.getAttribute("data-cache") !== "true") return false;
   const endpoint = scriptEl.getAttribute("data-endpoint");
   if (!endpoint) return false;
@@ -378,14 +381,7 @@ function _hasCachedData(scriptEl) {
 }
 
 if (typeof document !== "undefined") {
-  const scripts = document.querySelectorAll("script[src]");
-  let _scriptEl = null;
-  for (const s of scripts) {
-    if (s.src && s.src.includes("buildbanner")) {
-      _scriptEl = s;
-      break;
-    }
-  }
+  const _scriptEl = _findScriptEl();
 
   if (document.body && _hasCachedData(_scriptEl)) {
     // Cache exists and body is available — render immediately

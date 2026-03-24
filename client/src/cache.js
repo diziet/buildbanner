@@ -55,17 +55,11 @@ export function readCache(endpoint) {
 }
 
 /**
- * Fast check for cache key existence without JSON parsing.
+ * Check if a valid (non-expired) cache entry exists for the endpoint.
  * Used at script parse time to decide whether to render immediately.
  */
 export function hasCacheEntry(endpoint) {
-  if (!_isStorageAvailable()) return false;
-
-  try {
-    return localStorage.getItem(_storageKey(endpoint)) !== null;
-  } catch {
-    return false;
-  }
+  return readCache(endpoint) !== null;
 }
 
 /**

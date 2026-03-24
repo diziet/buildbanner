@@ -259,6 +259,32 @@ describe("BuildBanner main", () => {
 describe("BuildBanner parse-time cache rendering", () => {
   let mockFetch;
 
+  /** Override document.readyState to a given value. */
+  function setReadyState(value) {
+    Object.defineProperty(document, "readyState", {
+      value, writable: true, configurable: true,
+    });
+  }
+
+  /** Create and append a buildbanner script element with common attributes. */
+  function createBannerScript(endpoint, { cache } = {}) {
+    const script = document.createElement("script");
+    script.src = "https://cdn.example.com/buildbanner.js";
+    script.setAttribute("data-endpoint", endpoint);
+    if (cache !== undefined) script.setAttribute("data-cache", String(cache));
+    document.body.appendChild(script);
+    return script;
+  }
+
+  /** Assert no banner exists, dispatch DOMContentLoaded, then wait for banner. */
+  async function expectBannerAfterDOMContentLoaded() {
+    expect(document.querySelector("[data-testid='buildbanner']")).toBeNull();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    await vi.waitFor(() => {
+      expect(document.querySelector("[data-testid='buildbanner']")).not.toBeNull();
+    });
+  }
+
   beforeEach(() => {
     document.body.innerHTML = "";
     document.head.querySelectorAll("style").forEach((s) => s.remove());
@@ -276,6 +302,7 @@ describe("BuildBanner parse-time cache rendering", () => {
     localStorage.clear();
     vi.restoreAllMocks();
     document.body.innerHTML = "";
+    setReadyState("complete");
   });
 
   it("warm cache + body available: renders synchronously at parse time", async () => {
@@ -285,18 +312,8 @@ describe("BuildBanner parse-time cache rendering", () => {
 
     writeCache(endpoint, cachedData, "system");
     mockFetch.mockResolvedValue(mockResponse(cachedData));
-
-    const script = document.createElement("script");
-    script.src = "https://cdn.example.com/buildbanner.js";
-    script.setAttribute("data-endpoint", endpoint);
-    script.setAttribute("data-cache", "true");
-    document.body.appendChild(script);
-
-    Object.defineProperty(document, "readyState", {
-      value: "loading",
-      writable: true,
-      configurable: true,
-    });
+    createBannerScript(endpoint, { cache: true });
+    setReadyState("loading");
 
     // Import triggers auto-init synchronously when cache is warm
     await import("../src/main.js");
@@ -308,12 +325,6 @@ describe("BuildBanner parse-time cache rendering", () => {
       const sha = host.shadowRoot.querySelector("[data-segment='sha']");
       expect(sha.textContent).toBe("cached1");
     });
-
-    Object.defineProperty(document, "readyState", {
-      value: "complete",
-      writable: true,
-      configurable: true,
-    });
   });
 
   it("warm cache + no body: falls back to DOMContentLoaded", async () => {
@@ -321,12 +332,7 @@ describe("BuildBanner parse-time cache rendering", () => {
     const endpoint = "/buildbanner.json";
     writeCache(endpoint, { sha: "abc", branch: "main" }, "system");
     mockFetch.mockResolvedValue(mockResponse({ sha: "abc", branch: "main" }));
-
-    const script = document.createElement("script");
-    script.src = "https://cdn.example.com/buildbanner.js";
-    script.setAttribute("data-endpoint", endpoint);
-    script.setAttribute("data-cache", "true");
-    document.body.appendChild(script);
+    createBannerScript(endpoint, { cache: true });
 
     // Simulate no body
     const originalBody = document.body;
@@ -336,16 +342,8 @@ describe("BuildBanner parse-time cache rendering", () => {
       configurable: true,
     });
 
-    Object.defineProperty(document, "readyState", {
-      value: "loading",
-      writable: true,
-      configurable: true,
-    });
-
+    setReadyState("loading");
     await import("../src/main.js");
-
-    // No banner yet — waiting for DOMContentLoaded
-    expect(document.querySelector("[data-testid='buildbanner']")).toBeNull();
 
     // Restore body and fire DOMContentLoaded
     Object.defineProperty(document, "body", {
@@ -353,52 +351,19 @@ describe("BuildBanner parse-time cache rendering", () => {
       writable: true,
       configurable: true,
     });
-    document.dispatchEvent(new Event("DOMContentLoaded"));
 
-    await vi.waitFor(() => {
-      const host = document.querySelector("[data-testid='buildbanner']");
-      expect(host).not.toBeNull();
-    });
-
-    Object.defineProperty(document, "readyState", {
-      value: "complete",
-      writable: true,
-      configurable: true,
-    });
+    await expectBannerAfterDOMContentLoaded();
   });
 
   it("no cache: falls back to DOMContentLoaded", async () => {
     vi.resetModules();
     mockFetch.mockResolvedValue(mockResponse({ sha: "abc", branch: "main" }));
-
-    const script = document.createElement("script");
-    script.src = "https://cdn.example.com/buildbanner.js";
-    script.setAttribute("data-endpoint", "/buildbanner.json");
-    document.body.appendChild(script);
-
-    Object.defineProperty(document, "readyState", {
-      value: "loading",
-      writable: true,
-      configurable: true,
-    });
+    createBannerScript("/buildbanner.json");
+    setReadyState("loading");
 
     await import("../src/main.js");
 
-    // No banner yet — no cache, waiting for DOMContentLoaded
-    expect(document.querySelector("[data-testid='buildbanner']")).toBeNull();
-
-    document.dispatchEvent(new Event("DOMContentLoaded"));
-
-    await vi.waitFor(() => {
-      const host = document.querySelector("[data-testid='buildbanner']");
-      expect(host).not.toBeNull();
-    });
-
-    Object.defineProperty(document, "readyState", {
-      value: "complete",
-      writable: true,
-      configurable: true,
-    });
+    await expectBannerAfterDOMContentLoaded();
   });
 
   it("data-cache='false': falls back to DOMContentLoaded", async () => {
@@ -406,36 +371,12 @@ describe("BuildBanner parse-time cache rendering", () => {
     const endpoint = "/buildbanner.json";
     writeCache(endpoint, { sha: "abc", branch: "main" }, "system");
     mockFetch.mockResolvedValue(mockResponse({ sha: "abc", branch: "main" }));
-
-    const script = document.createElement("script");
-    script.src = "https://cdn.example.com/buildbanner.js";
-    script.setAttribute("data-endpoint", endpoint);
-    script.setAttribute("data-cache", "false");
-    document.body.appendChild(script);
-
-    Object.defineProperty(document, "readyState", {
-      value: "loading",
-      writable: true,
-      configurable: true,
-    });
+    createBannerScript(endpoint, { cache: false });
+    setReadyState("loading");
 
     await import("../src/main.js");
 
-    // No banner yet — cache disabled, waiting for DOMContentLoaded
-    expect(document.querySelector("[data-testid='buildbanner']")).toBeNull();
-
-    document.dispatchEvent(new Event("DOMContentLoaded"));
-
-    await vi.waitFor(() => {
-      const host = document.querySelector("[data-testid='buildbanner']");
-      expect(host).not.toBeNull();
-    });
-
-    Object.defineProperty(document, "readyState", {
-      value: "complete",
-      writable: true,
-      configurable: true,
-    });
+    await expectBannerAfterDOMContentLoaded();
   });
 
   it("warm cache: background refresh updates banner if data changed", async () => {
@@ -446,18 +387,8 @@ describe("BuildBanner parse-time cache rendering", () => {
 
     writeCache(endpoint, cachedData, "system");
     mockFetch.mockResolvedValue(mockResponse(freshData));
-
-    const script = document.createElement("script");
-    script.src = "https://cdn.example.com/buildbanner.js";
-    script.setAttribute("data-endpoint", endpoint);
-    script.setAttribute("data-cache", "true");
-    document.body.appendChild(script);
-
-    Object.defineProperty(document, "readyState", {
-      value: "loading",
-      writable: true,
-      configurable: true,
-    });
+    createBannerScript(endpoint, { cache: true });
+    setReadyState("loading");
 
     await import("../src/main.js");
 
@@ -467,12 +398,6 @@ describe("BuildBanner parse-time cache rendering", () => {
       expect(host).not.toBeNull();
       const sha = host.shadowRoot.querySelector("[data-segment='sha']");
       expect(sha.textContent).toBe("new5678");
-    });
-
-    Object.defineProperty(document, "readyState", {
-      value: "complete",
-      writable: true,
-      configurable: true,
     });
   });
 });
