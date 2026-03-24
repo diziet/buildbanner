@@ -1230,12 +1230,14 @@
     }).then((newData) => {
       if (!newData) return;
       if (instance.destroyed) return;
-      const shaChanged = newData.sha !== instance.data.sha;
+      const isDataChanged = newData.sha !== instance.data.sha || newData.server_started !== instance.data.server_started;
       instance.data = newData;
-      if (shaChanged) {
+      if (isDataChanged) {
         _rerender(instance);
       }
-      writeCache(instance.config.endpoint, newData, instance.config.theme);
+      if (instance.config.cache) {
+        writeCache(instance.config.endpoint, newData, instance.config.theme);
+      }
     }).catch(() => {
     });
   }
@@ -1336,6 +1338,13 @@
     );
     instance.tickerTimerId = rendered.tickerTimerId;
     _injectShaColorStyle(instance.shadowRoot, rendered.shaColor);
+    const dismissBtn = createDismissButton(instance.config, () => {
+      _teardown(instance);
+      _clearInstance();
+    });
+    if (dismissBtn) {
+      instance.wrapper.appendChild(dismissBtn);
+    }
   }
   async function refresh() {
     try {

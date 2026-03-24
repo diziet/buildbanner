@@ -144,14 +144,17 @@ function _backgroundRefresh(instance, logger) {
     if (!newData) return; // Fetch failed — keep showing cached data
     if (instance.destroyed) return;
 
-    const shaChanged = newData.sha !== instance.data.sha;
+    const isDataChanged = newData.sha !== instance.data.sha
+      || newData.server_started !== instance.data.server_started;
     instance.data = newData;
 
-    if (shaChanged) {
+    if (isDataChanged) {
       _rerender(instance);
     }
 
-    writeCache(instance.config.endpoint, newData, instance.config.theme);
+    if (instance.config.cache) {
+      writeCache(instance.config.endpoint, newData, instance.config.theme);
+    }
   }).catch(() => {
     // Never throw — background refresh is fire-and-forget
   });
@@ -237,7 +240,7 @@ function _injectShaColorStyle(shadowRoot, shaColor) {
   shadowRoot.appendChild(style);
 }
 
-/** Re-render segments from current instance data. */
+/** Re-render segments from current instance data, preserving dismiss button. */
 function _rerender(instance) {
   if (instance.tickerTimerId) {
     clearInterval(instance.tickerTimerId);
@@ -248,6 +251,14 @@ function _rerender(instance) {
   );
   instance.tickerTimerId = rendered.tickerTimerId;
   _injectShaColorStyle(instance.shadowRoot, rendered.shaColor);
+
+  const dismissBtn = createDismissButton(instance.config, () => {
+    _teardown(instance);
+    _clearInstance();
+  });
+  if (dismissBtn) {
+    instance.wrapper.appendChild(dismissBtn);
+  }
 }
 
 /** Trigger a manual re-fetch and update segments. */

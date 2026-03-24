@@ -74,16 +74,3 @@ export function writeCache(endpoint, data, theme) {
     // Quota exceeded or other storage error — silently degrade
   }
 }
-
-/**
- * Clear the cache entry for a given endpoint.
- */
-export function clearCache(endpoint) {
-  if (!_isStorageAvailable()) return;
-
-  try {
-    localStorage.removeItem(_storageKey(endpoint));
-  } catch {
-    // Silently degrade
-  }
-}

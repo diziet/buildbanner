@@ -5,7 +5,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 describe("cache module", () => {
   let readCache;
   let writeCache;
-  let clearCache;
 
   beforeEach(async () => {
     localStorage.clear();
@@ -15,7 +14,6 @@ describe("cache module", () => {
     const mod = await import("../src/cache.js");
     readCache = mod.readCache;
     writeCache = mod.writeCache;
-    clearCache = mod.clearCache;
   });
 
   afterEach(() => {
@@ -114,13 +112,6 @@ describe("cache module", () => {
       timestamp: Date.now() + 100000,
     };
     localStorage.setItem("buildbanner_cache:/buildbanner.json", JSON.stringify(entry));
-    expect(readCache("/buildbanner.json")).toBeNull();
-  });
-
-  it("clearCache removes the entry", () => {
-    writeCache("/buildbanner.json", { sha: "abc" }, "dark");
-    expect(readCache("/buildbanner.json")).not.toBeNull();
-    clearCache("/buildbanner.json");
     expect(readCache("/buildbanner.json")).toBeNull();
   });
 
