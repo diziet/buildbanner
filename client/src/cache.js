@@ -55,6 +55,14 @@ export function readCache(endpoint) {
 }
 
 /**
+ * Check if a valid (non-expired) cache entry exists for the endpoint.
+ * Used at script parse time to decide whether to render immediately.
+ */
+export function hasCacheEntry(endpoint) {
+  return readCache(endpoint) !== null;
+}
+
+/**
  * Write banner data to localStorage cache.
  * Silently fails if localStorage is unavailable.
  */

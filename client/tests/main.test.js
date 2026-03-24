@@ -2,6 +2,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mockResponse } from "./helpers.js";
+import { writeCache } from "../src/cache.js";
 
 describe("BuildBanner main", () => {
   let BuildBanner;
@@ -252,5 +253,151 @@ describe("BuildBanner main", () => {
     const host = document.querySelector("[data-testid='buildbanner']");
     const sha = host.shadowRoot.querySelector("[data-segment='sha']");
     expect(sha.textContent).toBe("def");
+  });
+});
+
+describe("BuildBanner parse-time cache rendering", () => {
+  let mockFetch;
+
+  /** Override document.readyState to a given value. */
+  function setReadyState(value) {
+    Object.defineProperty(document, "readyState", {
+      value, writable: true, configurable: true,
+    });
+  }
+
+  /** Create and append a buildbanner script element with common attributes. */
+  function createBannerScript(endpoint, { cache } = {}) {
+    const script = document.createElement("script");
+    script.src = "https://cdn.example.com/buildbanner.js";
+    script.setAttribute("data-endpoint", endpoint);
+    if (cache !== undefined) script.setAttribute("data-cache", String(cache));
+    document.body.appendChild(script);
+    return script;
+  }
+
+  /** Assert no banner exists, dispatch DOMContentLoaded, then wait for banner. */
+  async function expectBannerAfterDOMContentLoaded() {
+    expect(document.querySelector("[data-testid='buildbanner']")).toBeNull();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    await vi.waitFor(() => {
+      expect(document.querySelector("[data-testid='buildbanner']")).not.toBeNull();
+    });
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    document.head.querySelectorAll("style").forEach((s) => s.remove());
+    window[Symbol.for("buildbanner")] = null;
+    localStorage.clear();
+    mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    try {
+      window.BuildBanner?.destroy?.();
+    } catch { /* ignore */ }
+    window[Symbol.for("buildbanner")] = null;
+    localStorage.clear();
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+    setReadyState("complete");
+  });
+
+  it("warm cache + body available: renders synchronously at parse time", async () => {
+    vi.resetModules();
+    const endpoint = "/buildbanner.json";
+    const cachedData = { sha: "cached1", branch: "main" };
+
+    writeCache(endpoint, cachedData, "system");
+    mockFetch.mockResolvedValue(mockResponse(cachedData));
+    createBannerScript(endpoint, { cache: true });
+    setReadyState("loading");
+
+    // Import triggers auto-init synchronously when cache is warm
+    await import("../src/main.js");
+
+    // Banner should render without waiting for DOMContentLoaded
+    await vi.waitFor(() => {
+      const host = document.querySelector("[data-testid='buildbanner']");
+      expect(host).not.toBeNull();
+      const sha = host.shadowRoot.querySelector("[data-segment='sha']");
+      expect(sha.textContent).toBe("cached1");
+    });
+  });
+
+  it("warm cache + no body: falls back to DOMContentLoaded", async () => {
+    vi.resetModules();
+    const endpoint = "/buildbanner.json";
+    writeCache(endpoint, { sha: "abc", branch: "main" }, "system");
+    mockFetch.mockResolvedValue(mockResponse({ sha: "abc", branch: "main" }));
+    createBannerScript(endpoint, { cache: true });
+
+    // Simulate no body
+    const originalBody = document.body;
+    Object.defineProperty(document, "body", {
+      value: null,
+      writable: true,
+      configurable: true,
+    });
+
+    setReadyState("loading");
+    await import("../src/main.js");
+
+    // Restore body and fire DOMContentLoaded
+    Object.defineProperty(document, "body", {
+      value: originalBody,
+      writable: true,
+      configurable: true,
+    });
+
+    await expectBannerAfterDOMContentLoaded();
+  });
+
+  it("no cache: falls back to DOMContentLoaded", async () => {
+    vi.resetModules();
+    mockFetch.mockResolvedValue(mockResponse({ sha: "abc", branch: "main" }));
+    createBannerScript("/buildbanner.json");
+    setReadyState("loading");
+
+    await import("../src/main.js");
+
+    await expectBannerAfterDOMContentLoaded();
+  });
+
+  it("data-cache='false': falls back to DOMContentLoaded", async () => {
+    vi.resetModules();
+    const endpoint = "/buildbanner.json";
+    writeCache(endpoint, { sha: "abc", branch: "main" }, "system");
+    mockFetch.mockResolvedValue(mockResponse({ sha: "abc", branch: "main" }));
+    createBannerScript(endpoint, { cache: false });
+    setReadyState("loading");
+
+    await import("../src/main.js");
+
+    await expectBannerAfterDOMContentLoaded();
+  });
+
+  it("warm cache: background refresh updates banner if data changed", async () => {
+    vi.resetModules();
+    const endpoint = "/buildbanner.json";
+    const cachedData = { sha: "old1234", branch: "main" };
+    const freshData = { sha: "new5678", branch: "main", server_started: "2026-03-24T13:00:00Z" };
+
+    writeCache(endpoint, cachedData, "system");
+    mockFetch.mockResolvedValue(mockResponse(freshData));
+    createBannerScript(endpoint, { cache: true });
+    setReadyState("loading");
+
+    await import("../src/main.js");
+
+    // Wait for background refresh to update the banner
+    await vi.waitFor(() => {
+      const host = document.querySelector("[data-testid='buildbanner']");
+      expect(host).not.toBeNull();
+      const sha = host.shadowRoot.querySelector("[data-segment='sha']");
+      expect(sha.textContent).toBe("new5678");
+    });
   });
 });
