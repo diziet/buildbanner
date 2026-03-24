@@ -71,27 +71,7 @@ async function init(opts = {}) {
 
     const logger = createLogger(config.debug);
 
-    const data = await fetchBannerData(config.endpoint, {
-      token: config.token,
-      logger,
-    });
-
-    if (!data) {
-      _clearInstance();
-      return;
-    }
-
-    if (Array.isArray(config.envHide) && config.envHide.length > 0 && !data.environment) {
-      logger.log("envHide is configured but server response has no environment field");
-    }
-
-    if (shouldHide(config.envHide, data.environment)) {
-      logger.log("Banner hidden: environment '" + data.environment + "' is in envHide list");
-      pending.destroyed = true;
-      _clearInstance();
-      return;
-    }
-
+    // Render placeholder synchronously before fetch to eliminate flash
     const bannerHeight = parseInt(config.height, 10) || DEFAULT_HEIGHT;
     const pushState = applyPush(config, bannerHeight, logger);
     const positionMode = resolvePositionMode(pushState.mode);
@@ -104,6 +84,32 @@ async function init(opts = {}) {
     }
 
     const { host, shadowRoot, wrapper, fallbackStyle } = result;
+
+    const data = await fetchBannerData(config.endpoint, {
+      token: config.token,
+      logger,
+    });
+
+    if (!data) {
+      removePush(bannerHeight, pushState, config);
+      destroyBannerHost(host, fallbackStyle);
+      _clearInstance();
+      return;
+    }
+
+    if (Array.isArray(config.envHide) && config.envHide.length > 0 && !data.environment) {
+      logger.log("envHide is configured but server response has no environment field");
+    }
+
+    if (shouldHide(config.envHide, data.environment)) {
+      logger.log("Banner hidden: environment '" + data.environment + "' is in envHide list");
+      removePush(bannerHeight, pushState, config);
+      destroyBannerHost(host, fallbackStyle);
+      pending.destroyed = true;
+      _clearInstance();
+      return;
+    }
+
     const previousStatuses = {};
     const { tickerTimerId, shaColor } = renderSegments(data, wrapper, config, previousStatuses);
     _injectShaColorStyle(shadowRoot, shaColor);
