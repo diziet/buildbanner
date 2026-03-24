@@ -395,3 +395,23 @@ Render the `<build-banner>` custom element with a placeholder skeleton **synchro
 - Text fills in smoothly once data arrives
 
 ---
+
+## Task 48: Support runtime theme switching via data-theme attribute observation
+
+### Bug
+
+When a host app toggles between dark/light mode at runtime (e.g. via `data-theme` attribute on `<html>`), buildbanner stays on its initial theme. The `auto` theme only reads `prefers-color-scheme` (OS setting), not the host app's theme state.
+
+### Fix
+
+1. **Watch for `data-theme` changes** — use a `MutationObserver` on `document.documentElement` to detect when the `data-theme` attribute changes. When it changes to `"dark"`, switch to dark theme. When `"light"`, switch to light. This is a common pattern for web apps that toggle themes via data attributes.
+
+2. **Priority**: `data-theme` attribute on `<html>` > `prefers-color-scheme` > default. If the host app sets `data-theme`, that takes precedence over the OS setting.
+
+3. **Update shadow DOM styles** in real-time when the theme changes — swap the CSS variables inside the shadow root.
+
+### Result
+
+Apps that toggle `data-theme="dark"` / `data-theme="light"` on `<html>` get automatic banner theme matching without any extra JS.
+
+---
