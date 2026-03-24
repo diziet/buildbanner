@@ -415,3 +415,22 @@ When a host app toggles between dark/light mode at runtime (e.g. via `data-theme
 Apps that toggle `data-theme="dark"` / `data-theme="light"` on `<html>` get automatic banner theme matching without any extra JS.
 
 ---
+
+## Task 49: Check data-theme on initial render, not just via observer
+
+### Bug
+
+When `data-theme="auto"` is set, the initial CSS uses `prefers-color-scheme` to pick dark/light. The `startThemeObserver` then reads `data-theme` from `<html>` and overrides — but there's a visible frame flash between the two. If the OS is set to light but the app uses `data-theme="dark"`, the banner flashes light then switches to dark on every page load.
+
+### Fix
+
+In `theme.js` `getThemeStyles()`, when theme is `"auto"`, check `document.documentElement.getAttribute("data-theme")` FIRST. If it's set to `"dark"` or `"light"`, use that directly. Only fall back to `prefers-color-scheme` if `data-theme` is absent.
+
+This way the initial CSS render already matches the host app's theme — zero flash. The MutationObserver still handles runtime changes.
+
+### Files
+
+- `client/src/theme.js` — `getThemeStyles()` checks `data-theme` first
+- Rebuild dist after change
+
+---
