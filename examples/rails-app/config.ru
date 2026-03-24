@@ -5,6 +5,8 @@
 require 'buildbanner'
 
 use BuildBanner::Middleware
+# Serve static files from ./public (place buildbanner.min.js in public/static/)
+use Rack::Static, urls: ['/static'], root: 'public'
 
 app = proc do |_env|
   body = <<~HTML

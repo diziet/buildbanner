@@ -8,6 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(buildBannerMiddleware());
+app.use('/static', express.static('public'));
 
 app.get('/', (_req, res) => {
   res.send(`<!DOCTYPE html>

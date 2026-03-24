@@ -2,8 +2,6 @@
   "name": "buildbanner",
   "version": "0.1.0",
   "main": "buildbanner.js",
-  "unpkg": "dist/buildbanner.min.js",
-  "jsdelivr": "dist/buildbanner.min.js",
   "files": [
     "buildbanner.js",
     "dist/"
