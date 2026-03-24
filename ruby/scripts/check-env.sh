@@ -9,18 +9,11 @@ MIN_RUBY_MINOR=1
 MIN_BUNDLER_MAJOR=2
 MIN_BUNDLER_MINOR=4
 
-# Usage: check_version <cmd> <version_cmd> <min_major> <min_minor> <label> [install_hint]
-check_version() {
-  local cmd="$1" version_cmd="$2" min_major="$3" min_minor="$4" label="$5"
-  local install_hint="${6:-}"
-
-  if ! command -v "$cmd" &>/dev/null; then
-    echo "ERROR: ${label} is not installed.${install_hint:+ ${install_hint}}"
-    exit 1
-  fi
-
-  local version major minor
-  version=$(eval "$version_cmd")
+# Verify version meets minimum major.minor requirement.
+check_minimum_version() {
+  local version="$1" min_major="$2" min_minor="$3" label="$4"
+  local install_hint="${5:-}"
+  local major minor
   major=$(echo "$version" | cut -d. -f1)
   minor=$(echo "$version" | cut -d. -f2)
 
@@ -33,10 +26,23 @@ check_version() {
 }
 
 echo "Checking BuildBanner Ruby environment..."
-check_version ruby "ruby -e 'puts RUBY_VERSION'" \
-  "$MIN_RUBY_MAJOR" "$MIN_RUBY_MINOR" "Ruby" \
+
+# Check Ruby
+if ! command -v ruby &>/dev/null; then
+  echo "ERROR: Ruby is not installed. Install via rbenv, rvm, or your package manager."
+  exit 1
+fi
+ruby_version=$(ruby -e 'puts RUBY_VERSION')
+check_minimum_version "$ruby_version" "$MIN_RUBY_MAJOR" "$MIN_RUBY_MINOR" "Ruby" \
   "Install via rbenv, rvm, or your package manager."
-check_version bundle "bundle --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'" \
-  "$MIN_BUNDLER_MAJOR" "$MIN_BUNDLER_MINOR" "Bundler" \
+
+# Check Bundler
+if ! command -v bundle &>/dev/null; then
+  echo "ERROR: Bundler is not installed. Run: gem install bundler"
+  exit 1
+fi
+bundler_version=$(bundle --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+check_minimum_version "$bundler_version" "$MIN_BUNDLER_MAJOR" "$MIN_BUNDLER_MINOR" "Bundler" \
   "Run: gem install bundler"
+
 echo "All checks passed."
