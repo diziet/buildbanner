@@ -37,16 +37,6 @@ Breakdown:
 - `style-src 'self'` — allows the fallback `<style>` tag (not needed if Shadow DOM is used)
 - `connect-src 'self'` — allows the `fetch()` call to `/buildbanner.json`
 
-## CDN-Hosted Examples
-
-When loading from unpkg or another CDN:
-
-```
-Content-Security-Policy: script-src 'self' https://unpkg.com; style-src 'self'; connect-src 'self';
-```
-
-Only the `script-src` directive needs the CDN domain. The JSON endpoint fetch is same-origin, so `connect-src 'self'` is sufficient.
-
 ## Cross-Origin Endpoint
 
 If your JSON endpoint is on a different origin (not typical):
@@ -75,5 +65,3 @@ The `<style>` tag injected by the non-Shadow-DOM fallback does not carry a nonce
 |----------|-------------------|
 | Self-hosted + Shadow DOM | None (if `script-src 'self'` already set) |
 | Self-hosted + fallback | `style-src 'self'` |
-| CDN + Shadow DOM | `script-src https://unpkg.com` |
-| CDN + fallback | `script-src https://unpkg.com; style-src 'self'` |

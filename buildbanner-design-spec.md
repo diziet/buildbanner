@@ -144,13 +144,10 @@ Any non-200 or malformed JSON → client silently hides the banner. No retries o
 ### Installation
 
 ```html
-<!-- Option A: CDN -->
-<script src="https://unpkg.com/buildbanner@latest/buildbanner.min.js"></script>
-
-<!-- Option B: Self-hosted -->
+<!-- Option A: Self-hosted (copy dist/buildbanner.min.js into your static assets) -->
 <script src="/static/buildbanner.min.js"></script>
 
-<!-- Option C: npm -->
+<!-- Option B: npm -->
 <!-- npm install buildbanner -->
 <!-- import 'buildbanner'; -->
 ```
@@ -160,7 +157,7 @@ Any non-200 or malformed JSON → client silently hides the banner. No retries o
 Zero config if endpoint is at `/buildbanner.json`:
 
 ```html
-<script src="https://unpkg.com/buildbanner@latest/buildbanner.min.js"></script>
+<script src="/static/buildbanner.min.js"></script>
 <!-- That's it. Banner appears if endpoint responds. -->
 ```
 
@@ -558,10 +555,10 @@ BuildBanner is designed to work under strict CSPs:
 
 **If self-hosting**, no CSP changes are needed beyond allowing your own origin.
 
-**If loading from CDN**, add the CDN domain to `script-src`:
+**If loading from a CDN** (requires publishing to npm first), add the CDN domain to `script-src`:
 
 ```
-Content-Security-Policy: script-src 'self' https://unpkg.com;
+Content-Security-Policy: script-src 'self' https://cdn.example.com;
 ```
 
 **If using Shadow DOM**, no additional CSP directives are required — Shadow DOM styles are encapsulated and do not trigger `style-src` violations.
