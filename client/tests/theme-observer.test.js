@@ -5,6 +5,9 @@ import { startThemeObserver } from "../src/theme-observer.js";
 import { createBannerHost, destroyBannerHost } from "../src/dom.js";
 import { DARK_BG, DARK_FG, LIGHT_BG, LIGHT_FG } from "../src/theme.js";
 
+/** Flush pending MutationObserver microtasks. */
+const flushObserver = () => new Promise((r) => setTimeout(r, 0));
+
 /** Reset DOM state between tests. */
 function cleanupDom() {
   document.body.innerHTML = "";
@@ -77,7 +80,7 @@ describe("theme-observer module", () => {
       document.documentElement.setAttribute("data-theme", "dark");
 
       // MutationObserver is async — flush microtasks
-      await new Promise((r) => setTimeout(r, 0));
+      await flushObserver();
 
       const overrideStyle = shadowRoot.getElementById("bb-theme-override");
       expect(overrideStyle).not.toBeNull();
@@ -90,7 +93,7 @@ describe("theme-observer module", () => {
       const handle = startThemeObserver(shadowRoot, "auto");
       document.documentElement.setAttribute("data-theme", "light");
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushObserver();
 
       const overrideStyle = shadowRoot.getElementById("bb-theme-override");
       expect(overrideStyle).not.toBeNull();
@@ -106,7 +109,7 @@ describe("theme-observer module", () => {
       expect(shadowRoot.getElementById("bb-theme-override")).not.toBeNull();
 
       document.documentElement.removeAttribute("data-theme");
-      await new Promise((r) => setTimeout(r, 0));
+      await flushObserver();
 
       expect(shadowRoot.getElementById("bb-theme-override")).toBeNull();
       handle.stop();
@@ -116,11 +119,11 @@ describe("theme-observer module", () => {
       const handle = startThemeObserver(shadowRoot, "auto");
 
       document.documentElement.setAttribute("data-theme", "dark");
-      await new Promise((r) => setTimeout(r, 0));
+      await flushObserver();
       expect(shadowRoot.getElementById("bb-theme-override").textContent).toContain(DARK_BG);
 
       document.documentElement.setAttribute("data-theme", "light");
-      await new Promise((r) => setTimeout(r, 0));
+      await flushObserver();
       expect(shadowRoot.getElementById("bb-theme-override").textContent).toContain(LIGHT_BG);
 
       handle.stop();
@@ -130,7 +133,7 @@ describe("theme-observer module", () => {
       const handle = startThemeObserver(shadowRoot, "auto");
 
       document.documentElement.setAttribute("data-theme", "sepia");
-      await new Promise((r) => setTimeout(r, 0));
+      await flushObserver();
 
       expect(shadowRoot.getElementById("bb-theme-override")).toBeNull();
       handle.stop();
@@ -152,7 +155,7 @@ describe("theme-observer module", () => {
       handle.stop();
 
       document.documentElement.setAttribute("data-theme", "light");
-      await new Promise((r) => setTimeout(r, 0));
+      await flushObserver();
 
       expect(shadowRoot.getElementById("bb-theme-override")).toBeNull();
     });

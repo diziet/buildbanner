@@ -1,13 +1,13 @@
 /** Theme observer — watches data-theme on <html> for runtime theme switching. */
 
-import constants from "./style-constants.json" with { type: "json" };
-
-const DARK_BG = constants.DARK_BG;
-const DARK_FG = constants.DARK_FG;
-const DARK_LINK = constants.DARK_LINK;
-const LIGHT_BG = constants.LIGHT_BG;
-const LIGHT_FG = constants.LIGHT_FG;
-const LIGHT_LINK = constants.LIGHT_LINK;
+import {
+  DARK_BG,
+  DARK_FG,
+  DARK_LINK,
+  LIGHT_BG,
+  LIGHT_FG,
+  LIGHT_LINK,
+} from "./theme.js";
 
 const OVERRIDE_STYLE_ID = "bb-theme-override";
 
