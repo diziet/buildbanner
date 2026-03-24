@@ -1,0 +1,53 @@
+/* BuildBanner fallback stylesheet for non-Shadow-DOM environments. */
+.__buildbanner-host {
+  all: initial;
+  display: block;
+}
+
+.__buildbanner-wrapper {
+  all: initial;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: sticky;
+  top: 0;
+  z-index: 999999;
+  height: 28px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 28px;
+  color: #e0e0e0;
+  background: #1a1a2e;
+  padding: 0 8px;
+  box-sizing: border-box;
+  font-weight: normal;
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: left;
+  text-decoration: none;
+  visibility: visible;
+  opacity: 1;
+  direction: ltr;
+}
+
+.__buildbanner-clickable {
+  cursor: pointer;
+}
+
+.__buildbanner-wrapper [data-segment] {
+  padding: 0 4px;
+}
+
+.__buildbanner-wrapper a {
+  color: #6fa8dc;
+  text-decoration: none;
+}
+
+.__buildbanner-wrapper a:hover {
+  text-decoration: underline;
+}
