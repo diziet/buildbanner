@@ -152,9 +152,8 @@ describe("push module", () => {
       expect(htmlBg).toBe("rgb(30, 30, 30)");
     });
 
-    it("push mode on a page with all fixed-position content does not create a visible gap", () => {
-      // When body has a dark background and all content is fixed-positioned,
-      // the padding area should match the body background
+    it("push mode matches black body background to html element", () => {
+      // Verifies background-matching works with a fully black body background
       document.body.style.backgroundColor = "rgb(0, 0, 0)";
       const config = { push: true, position: "top" };
       const result = applyPush(config, 28, mockLogger);

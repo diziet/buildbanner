@@ -42,7 +42,7 @@ export function applyPush(config, bannerHeight, logger) {
  * case where external code modified padding after init.
  *
  * @param {number} bannerHeight - Height of the banner in pixels.
- * @param {{ mode: string, originalPadding: number }} pushState - State from applyPush.
+ * @param {{ mode: string, originalPadding: number, originalBg: string }} pushState - State from applyPush.
  * @param {object} config - Banner configuration.
  */
 export function removePush(bannerHeight, pushState, config) {
