@@ -549,3 +549,34 @@ If the script somehow loads in `<head>` (before `<body>` exists), `document.body
 - Banner content matches cached data; background refresh updates if stale
 
 ---
+
+## Task 52: Fix push mode adding visible white gap on dark/full-screen pages
+
+**Objective:**
+
+When push mode is enabled (the default), BuildBanner sets
+`document.documentElement.style.paddingTop = "28px"`. Since the banner
+itself is `position: fixed`, this padding just reveals the bare `<html>`
+background (white by default) as a visible strip below the banner. On
+dark-themed or full-screen canvas apps where all content uses fixed/absolute
+positioning, this creates a jarring white bar at the top of the page. Push
+mode should not produce visible artifacts when the page background doesn't
+match or when there is no static-flow content to push.
+
+**Suggested path:**
+
+One approach is to sample the computed background color of `<html>` and
+`<body>` before applying the padding, and set a matching background on
+the root element so the padding area isn't a bare white strip. Another
+option is to detect when the page has no static-flow content (everything
+is fixed/absolute) and skip the padding entirely. A simpler fix would be
+to change the default to `push: false` since overlay mode works
+universally without side effects.
+
+**Tests:**
+
+- Push mode on a page with dark `<body>` background does not show a white strip
+- Push mode on a page with all fixed-position content does not create a visible gap
+- Explicit `data-push="false"` continues to skip padding entirely
+
+---
