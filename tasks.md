@@ -367,3 +367,31 @@ The Quick Start section in `docs/README.md` references `https://unpkg.com/buildb
 ## Task 46: Replace eval in ruby/scripts/check-env.sh
 
 `ruby/scripts/check-env.sh` line 23 uses `eval` to execute version commands (`version=$(eval "$version_cmd")`). While the inputs are currently hardcoded, `eval` is a shell anti-pattern that risks command injection if the function is ever reused with external input (ShellCheck SC2294). Replace the generic `check_version` function with direct version checks that avoid `eval` entirely — call `ruby -e "puts RUBY_VERSION"` and `bundle --version | grep -oE ...` directly instead of passing them as strings through `eval`.
+
+## Task 47: Eliminate banner flash — render placeholder synchronously before fetch
+
+### Bug
+
+When a page loads, there's a visible flash where the banner doesn't exist, then pops in after the `/buildbanner.json` fetch completes (~50-100ms gap). This is jarring on every page navigation.
+
+### Fix
+
+Render the `<build-banner>` custom element with a placeholder skeleton **synchronously** during script execution, before the fetch starts. The element should have the correct height, background color, and position immediately. When the JSON response arrives, fill in the text content (SHA, branch, uptime, etc.).
+
+### Implementation
+
+1. In `main.js` (or wherever the custom element is created), create and attach the `<build-banner>` element to the DOM **synchronously** at script load time — not inside a fetch `.then()` callback.
+
+2. The initial render shows an empty bar with the correct dimensions and background color (matching the current theme). No text, no loading spinner — just the colored strip at the correct position.
+
+3. When the fetch resolves, update the element's shadow DOM content with the actual data (links, text, uptime counter).
+
+4. If the fetch fails, the empty bar either stays as-is (invisible thin line) or removes itself gracefully.
+
+### Result
+
+- Zero layout shift — the bar is always there from first paint
+- No flash — background color matches immediately
+- Text fills in smoothly once data arrives
+
+---
