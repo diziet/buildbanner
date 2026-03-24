@@ -20,6 +20,8 @@ describe("push module", () => {
   beforeEach(() => {
     document.documentElement.style.paddingTop = "";
     document.documentElement.style.paddingBottom = "";
+    document.documentElement.style.backgroundColor = "";
+    document.body.style.backgroundColor = "";
     mockLogger.log.mockClear();
   });
 
@@ -135,6 +137,62 @@ describe("push module", () => {
       setHtmlPadding("paddingTop", 38);
       removePush(28, pushState, config);
       expect(readInlinePadding("paddingTop")).toBe(10);
+    });
+  });
+
+  describe("dark background gap prevention", () => {
+    it("push mode on a dark body does not show a white strip", () => {
+      document.body.style.backgroundColor = "rgb(30, 30, 30)";
+      const config = { push: true, position: "top" };
+      const result = applyPush(config, 28, mockLogger);
+
+      expect(result.mode).toBe("push");
+      // <html> background should match <body> so padding area isn't white
+      const htmlBg = document.documentElement.style.backgroundColor;
+      expect(htmlBg).toBe("rgb(30, 30, 30)");
+    });
+
+    it("push mode on a page with all fixed-position content does not create a visible gap", () => {
+      // When body has a dark background and all content is fixed-positioned,
+      // the padding area should match the body background
+      document.body.style.backgroundColor = "rgb(0, 0, 0)";
+      const config = { push: true, position: "top" };
+      const result = applyPush(config, 28, mockLogger);
+
+      expect(result.mode).toBe("push");
+      expect(document.documentElement.style.backgroundColor).toBe("rgb(0, 0, 0)");
+    });
+
+    it("explicit data-push=false continues to skip padding entirely", () => {
+      document.body.style.backgroundColor = "rgb(30, 30, 30)";
+      const config = { push: false, position: "top" };
+      const result = applyPush(config, 28, mockLogger);
+
+      expect(result.mode).toBe("overlay");
+      expect(readInlinePadding("paddingTop")).toBe(0);
+      // Should not touch <html> background
+      expect(document.documentElement.style.backgroundColor).toBe("");
+    });
+
+    it("removePush restores original <html> background", () => {
+      document.body.style.backgroundColor = "rgb(30, 30, 30)";
+      const config = { push: true, position: "top" };
+      const pushState = applyPush(config, 28, mockLogger);
+
+      expect(document.documentElement.style.backgroundColor).toBe("rgb(30, 30, 30)");
+
+      removePush(28, pushState, config);
+      expect(document.documentElement.style.backgroundColor).toBe("");
+    });
+
+    it("does not override existing <html> background", () => {
+      document.documentElement.style.backgroundColor = "rgb(50, 50, 50)";
+      document.body.style.backgroundColor = "rgb(30, 30, 30)";
+      const config = { push: true, position: "top" };
+      applyPush(config, 28, mockLogger);
+
+      // Should keep the existing <html> background, not overwrite it
+      expect(document.documentElement.style.backgroundColor).toBe("rgb(50, 50, 50)");
     });
   });
 
