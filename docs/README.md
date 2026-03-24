@@ -16,18 +16,14 @@ A crash-proof, language-agnostic developer info banner for web apps. Drop a `<sc
 
 ## Quick Start
 
-Zero configuration if your server exposes `/buildbanner.json`:
-
-```html
-<script src="https://unpkg.com/buildbanner@latest/buildbanner.min.js"></script>
-<!-- That's it. Banner appears if endpoint responds. -->
-```
-
-Or self-host the script:
+Zero configuration if your server exposes `/buildbanner.json`. Copy `buildbanner.min.js` into your static assets directory and add the script tag:
 
 ```html
 <script src="/static/buildbanner.min.js"></script>
+<!-- That's it. Banner appears if endpoint responds. -->
 ```
+
+See [docs/self-hosting.md](self-hosting.md) for detailed setup instructions.
 
 Or install via npm (from GitHub):
 

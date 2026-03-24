@@ -16,7 +16,7 @@ def index():
 <body>
   <h1>Flask App</h1>
   <p>BuildBanner is loaded via the script tag below.</p>
-  <script src="https://unpkg.com/buildbanner@latest/buildbanner.min.js"></script>
+  <script src="/static/buildbanner.min.js"></script>
 </body>
 </html>"""
 
