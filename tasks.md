@@ -580,3 +580,286 @@ universally without side effects.
 - Explicit `data-push="false"` continues to skip padding entirely
 
 ---
+
+## Task 53: Send `Cache-Control: no-cache` on polling fetches (`isRefetch` is ignored)
+
+**Class:** possible bug
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2d pass 3 (PR #60), "Findings for the owner", 2026-09-24.
+
+**Objective:**
+
+The design spec (`buildbanner-design-spec.md:539`) says client polling sends
+`Cache-Control: no-cache` with each repeated fetch. `client/src/main.js:284` passes
+`isRefetch: true` to `fetchBannerData`, but `client/src/fetch.js` ignores `isRefetch`, and
+`client/src/` contains no `no-cache`. The test for this is commented out at
+`client/tests/fetch.test.js:121-127` with `// TODO: Re-enable when polling (Task 13) adds isRefetch
+support`. Found by reading the code on 2026-09-24; not run in a browser.
+
+**Suggested path:**
+
+Re-enable the commented-out test first and confirm that it fails on the current code. Then make
+`fetchBannerData` send `Cache-Control: no-cache` when `isRefetch` is true. Rebuild `client/dist/`,
+because `client/tests/dist-fresh.test.js` compares it with a fresh build.
+
+**Tests:** `client/tests/fetch.test.js`
+
+- The re-enabled test passes: `Cache-Control` is `no-cache` when `isRefetch` is true.
+- The existing test that `Cache-Control` is absent on a first fetch still passes.
+- `make test-js` passes.
+
+---
+
+## Task 54: Log the production token-auth notice at the level the design spec gives
+
+**Class:** possible bug
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2d pass 3 (PR #60), "Findings for the owner", 2026-09-24.
+
+**Objective:**
+
+`python/buildbanner/core.py:272` `_warn_production_token` calls `logger.info` when
+`BUILDBANNER_ENVIRONMENT` is `production` and a token is set. The design spec asks for a warning:
+line 348 ("Log a warning if `environment=production` and token auth is enabled"), line 640 and
+line 738. The pass 3 docstring now describes the INFO call, so the comment and the code agree, but
+the spec does not.
+
+**Suggested path:**
+
+Write a test that asserts the record is logged at WARNING, as the spec says, and confirm that it
+fails on the current code. Then log at WARNING. If INFO is intended, the owner records that here instead,
+and the spec lines get a dated correction. Check whether the Node and Ruby helpers log this notice
+and at which level, and keep the three helpers consistent; `tests/parity/` holds the shared
+checks.
+
+**Tests:** `python/tests/test_core.py`
+
+- A test asserts the level of the production token-auth record.
+- `make test-python` and `make test-parity` pass.
+
+---
+
+## Task 55: Give `tests/static-example.test.js` per-run temporary paths
+
+**Class:** possible bug (test code)
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2d pass 1 (PR #58), 2026-09-24.
+
+**Objective:**
+
+`tests/static-example.test.js:12-13` writes the fixed paths `/tmp/buildbanner-test.json` and
+`/tmp/buildbanner-custom-path.json`. Two worktrees that run `make test-js` at the same time
+outside the gate lock can overwrite each other's files. Reported, not verified: no collision has
+been observed.
+
+**Suggested path:**
+
+Create the files in a per-run temporary directory (for example one from `fs.mkdtempSync`) and
+remove it after the suite. Resolved when no test in the file writes a fixed path under `/tmp`.
+
+**Tests:** `tests/static-example.test.js`
+
+- The suite passes, and `git grep -n '/tmp/buildbanner' tests/` finds nothing.
+- `make test-js` passes.
+
+---
+
+## Task 56: Stop `make clean` from leaving the tree dirty
+
+**Class:** possible bug
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2d pass 1 (PR #58), 2026-09-24.
+
+**Objective:**
+
+`make clean` (`Makefile:99`) runs `rm -rf client/dist/`. `client/dist/` is tracked, and
+`client/tests/dist-fresh.test.js` compares it with a fresh build, so after `make clean` the tree
+shows deleted tracked files until `make build` runs. A `TODO:` at `Makefile:97` records this.
+
+**Suggested path:**
+
+Resolved when `git status` shows no change to a tracked file after `make clean` on a clean tree.
+Remove the `TODO:` at `Makefile:97` in the same change.
+
+**Tests:**
+
+- Run `make clean` in a clean worktree; `git status --porcelain` prints nothing for tracked files.
+- `make test` passes.
+
+---
+
+## Task 57: Correct `buildbanner-design-spec.md` where it contradicts the code
+
+**Class:** stale claim
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2d pass 2 (PR #59) "Not changed, for the owner", and pass 3 (PR #60) "Findings for the owner", 2026-09-24.
+
+**Objective:**
+
+The preamble of `tasks.md` calls the design spec the authoritative reference. The spec differs from
+the code in these places (seen 2026-09-24; pass 2 did not audit the whole spec):
+
+- `### Enforcement` (line 654): a "CI size gate" and a size comment posted by CI on every PR. The
+  repo has no CI; `client/scripts/check-size.js` runs through `npm run size`. The budget in
+  `client/scripts/size-budget.js` is 8,500 bytes, not the <3KB target on line 652.
+- The Node example on line 493 uses `app.use(buildbanner())`. `node/index.js` exports
+  `buildBannerMiddleware`, `buildBannerKoa` and `buildBannerHono`, as `docs/README.md` shows.
+- The "single file" package descriptions (lines 410, 466, 486, 506) and the `## Project Structure`
+  tree (line 773) predate the current layout; `client/src/` holds 18 JavaScript files.
+- Line 214 quotes the duplicate-init message as
+  `"[BuildBanner] Already initialized — skipping duplicate script."`. `client/src/main.js:178` logs
+  `"[BuildBanner] Already initialized, skipping"`.
+- Line 214 names a `window.__buildBannerInstance` fallback. `client/src/` uses only
+  `Symbol.for("buildbanner")`.
+
+**Suggested path:**
+
+Strike through each disproved statement and add a dated correction that names the current code,
+as `docs/writing-style.md` requires and as pass 2 did in `docs/security.md`. Do not rename
+headings: `tasks.md` cites spec sections. The polling `no-cache` statement (line 539) and the
+production token warning (line 348) are left to Tasks 53 and 54.
+
+**Tests:**
+
+- `make test-js` passes (`tests/docs.test.js` reads the docs).
+
+---
+
+## Task 58: Document `data-cache` and `data-sha-color` in `docs/configuration.md`
+
+**Class:** stale claim
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2d pass 3 (PR #60), "Findings for the owner", 2026-09-24.
+
+**Objective:**
+
+`client/src/config.js:97-98` parses `data-sha-color` (validated against `VALID_SHA_COLOR`, default
+`"auto"`) and `data-cache` (boolean, default from `DEFAULT_CONFIG.cache`). `docs/configuration.md`
+documents neither attribute.
+
+**Suggested path:**
+
+Add both attributes to the attribute table in `docs/configuration.md`, with the accepted values
+and defaults read from `client/src/config.js`. Keep every phrase `tests/docs.test.js` asserts on.
+
+**Tests:**
+
+- `make test-js` passes.
+
+---
+
+## Task 59: Check the CSP claim in the `client/src/clipboard.js` comment
+
+**Class:** stale claim
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2d pass 3 (PR #60), "Findings for the owner", 2026-09-24.
+
+**Objective:**
+
+The comment at `client/src/clipboard.js:7-8` says that under a strict CSP that blocks inline
+styles, the off-screen textarea may show for a moment. `_execCommandCopy` sets the styles through
+`element.style`, which CSP may not restrict. Reported, not verified in a browser; pass 3 kept the
+claim.
+
+**Suggested path:**
+
+Check the behavior in a browser under a `style-src` policy without `'unsafe-inline'`, and record
+the date and result. Resolved when the comment states the observed behavior.
+
+**Tests:**
+
+- None; comment change. `make test-js` passes.
+
+---
+
+## Task 60: Test the pre-push hook's skip path for `gate-wiring-check`
+
+**Class:** weak test
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2d "State at the end of lane 2d", 2026-09-24.
+
+**Objective:**
+
+`.githooks/pre-push:16` skips `gate-wiring-check` with a message when the worktree has no `.venv`,
+`node_modules` or `ruby/vendor/bundle`. No test in `tests/tooling/test_hooks.py` covers that path;
+`test_hooks_skip_silently_when_guard_library_is_absent` covers only a missing guard library. The
+lane did not exercise the skip path.
+
+**Suggested path:**
+
+Add a tooling test that pushes a feature branch from a fixture clone without those directories,
+and asserts that the push succeeds and prints the skip message. Resolved when that test passes.
+
+**Tests:** `tests/tooling/test_hooks.py`
+
+- The new test passes. `make test-tooling` passes.
+
+---
+
+## Task 61: Owner decision: pin a Ruby version
+
+**Class:** design question (needs the owner)
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2c "Other findings" and lane 2d pass 1 (PR #58), 2026-09-24.
+
+**Objective:**
+
+`RUBY_BIN` in the `Makefile` (line 17) points at Homebrew's unversioned `ruby` formula, 4.0.7 on
+2026-09-24, and a `TODO:` at line 15 asks for a pin. `ruby/.ruby-version` says `3.1`, and
+`ruby/buildbanner.gemspec` requires `>= 3.1`. The suites ran under 4.0.7.
+
+**Suggested path:**
+
+Needs the owner's decision: which Ruby version to pin, and how the Studio installs it (the devops
+`Brewfile` installs the unversioned formula). Do not change the pin or `ruby/.ruby-version` until
+the owner records the decision here. Resolved when the `Makefile`, `ruby/.ruby-version` and
+`make doctor` name the same version.
+
+**Tests:**
+
+- `make doctor` and `make test-ruby` pass.
+
+---
+
+## Task 62: Owner decision: pin the Python test dependencies
+
+**Class:** design question (needs the owner)
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2b pass 0 (PR #56) and lane 2d pass 1 (PR #58), 2026-09-24.
+
+**Objective:**
+
+- `python/pyproject.toml:25` has `# TODO: the repo pins no Python test dependency versions.`, so
+  every `make venv` resolves the newest releases. `make doctor` checks the Python minor version,
+  not package versions.
+- starlette 1.7.0 emits a deprecation warning that asks for `httpx2` instead of `httpx` for
+  `TestClient`. The `test` extra declares `httpx` (`python/pyproject.toml:32`), because the lane
+  prompt asked for it.
+
+**Suggested path:**
+
+Needs the owner's decision: whether to pin these versions and how (for example a lock file), and
+whether to move from `httpx` to `httpx2`. Do not change the extra until the owner records the
+decision here.
+
+**Tests:**
+
+- `make test-python` and `make test-parity` pass.
+
+---
+
+## Task 63: Owner decision: open items in the gate tooling
+
+**Class:** design question (needs the owner)
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, lane 2d pass 1 (PR #58) and "State at the end of lane 2d", 2026-09-24.
+
+**Objective:**
+
+- The report-only watcher that re-runs the gate on each new `origin/main` commit is not built
+  (`TODO:` at `Makefile:112`).
+- `test-tooling` is the slowest gate stage, 34 s to 65 s on the Studio depending on load.
+  pytest-xdist was not added.
+- `tests/e2e/smoke.test.js` (Playwright) never runs in the gate. `check_gate_wiring.py` exempts it,
+  because `make deps` installs no browser.
+
+**Suggested path:**
+
+Needs the owner's decision on each item: build the watcher, add pytest-xdist to the tooling
+tests, and install a browser so the smoke test runs somewhere. Do not change the gate until the
+owner records the decisions here.
+
+**Tests:**
+
+- `make gate` passes.
+
+---
