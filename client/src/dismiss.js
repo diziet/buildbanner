@@ -6,7 +6,10 @@ const STORAGE_KEY = "buildbanner-dismissed";
 // blocked, it is the only record of a dismissal.
 let dismissedInMemory = false;
 
-/** Return sessionStorage or localStorage for the dismiss mode, or null when there is none or access fails. */
+/**
+ * Return sessionStorage or localStorage for the dismiss mode, or null when there is none or access
+ * fails.
+ */
 function _getStorage(dismiss) {
   try {
     if (dismiss === "session") return sessionStorage;

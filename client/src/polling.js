@@ -2,7 +2,10 @@
 
 const MAX_INTERVAL_SEC = 300;
 
-/** Start polling every config.poll seconds; returns the polling state, or null when config.poll is not a positive number. */
+/**
+ * Start polling every config.poll seconds; returns the polling state, or null when config.poll is
+ * not a positive number.
+ */
 export function startPolling(config, fetchFn, onData, logger) {
   const baseInterval = config.poll;
   if (!baseInterval || baseInterval <= 0) return null;

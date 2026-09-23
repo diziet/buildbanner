@@ -1,7 +1,8 @@
-/** Push mode — manages <html> padding to make room for the banner. */
+/** Push mode: pad <html> by the banner height, so the banner does not cover the page. */
 
 /**
- * Apply push mode if conditions allow, otherwise fall back to overlay.
+ * Add the push-mode padding, or fall back to overlay when push is off or <html> already has
+ * padding.
  * @param {object} config - Banner configuration.
  * @param {number} bannerHeight - Height of the banner in pixels.
  * @param {object} logger - Logger instance.
@@ -29,20 +30,20 @@ export function applyPush(config, bannerHeight, logger) {
 }
 
 /**
- * Remove push mode padding using subtract-not-overwrite strategy.
+ * Remove the push-mode padding with the subtract-not-overwrite strategy, and
+ * restore the <html> background color that applyPush may have set.
  *
- * Compares current computed padding against the expected value
- * (originalPadding + bannerHeight). If they match, restores to
- * originalPadding directly. Otherwise subtracts bannerHeight from
- * the current value (clamped to 0) to handle third-party changes.
+ * If the computed padding equals originalPadding + bannerHeight, the inline
+ * padding is cleared. Otherwise other code changed the padding after init, so
+ * bannerHeight is subtracted from the current value, stopping at 0.
  *
- * Note: originalPadding is always 0 when mode === "push" (since push
- * mode only activates when existing padding is zero), so the "exact
- * restore" path always clears to "". The subtraction path handles the
- * case where external code modified padding after init.
+ * originalPadding is always 0 when mode === "push", because push mode starts
+ * only when the existing padding is 0. The first branch therefore always
+ * clears the padding to "".
  *
  * @param {number} bannerHeight - Height of the banner in pixels.
- * @param {{ mode: string, originalPadding: number, originalBg: string }} pushState - State from applyPush.
+ * @param {{ mode: string, originalPadding: number, originalBg: string }} pushState - State from
+ * applyPush.
  * @param {object} config - Banner configuration.
  */
 export function removePush(bannerHeight, pushState, config) {
@@ -62,12 +63,12 @@ export function removePush(bannerHeight, pushState, config) {
   document.documentElement.style.backgroundColor = pushState.originalBg || "";
 }
 
-/** Map push mode result to CSS position value. */
+/** "sticky" in push mode, "fixed" in overlay mode. */
 export function resolvePositionMode(pushMode) {
   return pushMode === "push" ? "sticky" : "fixed";
 }
 
-/** Determine which padding property to use based on position. */
+/** paddingBottom for a bottom banner, paddingTop otherwise. */
 function _paddingProperty(config) {
   return config && config.position === "bottom" ? "paddingBottom" : "paddingTop";
 }
@@ -79,10 +80,10 @@ function _readPadding(prop) {
 }
 
 /**
- * Copy the computed background-color of <body> to <html> so push-mode
- * padding doesn't expose a bare white strip on dark or themed pages.
- * Only acts when <html> has no explicit inline background already set
- * and <body> has a non-transparent computed background.
+ * Copy the computed background-color of <body> to <html>, so the push-mode
+ * padding does not show a white strip on a dark or themed page.
+ * Acts only when the computed background of <html> is transparent and that of
+ * <body> is not.
  */
 function _matchRootBackground(logger) {
   if (!document.body) return;

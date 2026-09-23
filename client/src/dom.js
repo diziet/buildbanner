@@ -1,4 +1,4 @@
-/** DOM module — creates and destroys the banner host element. */
+/** Create and remove the banner host element and its styles. */
 
 import { createLogger } from "./logger.js";
 import { getThemeStyles, FONT_FAMILY, FONT_SIZE, DARK_BG, DARK_FG } from "./theme.js";
@@ -7,14 +7,14 @@ export const DEFAULT_HEIGHT = constants.DEFAULT_HEIGHT;
 const DEFAULT_Z_INDEX = constants.DEFAULT_Z_INDEX;
 const VALID_POSITION_MODES = ["sticky", "fixed"];
 
-/** Resolve and validate height/zIndex as safe integers. */
+/** Parse height and zIndex as integers; a missing, zero or invalid value gets the default. */
 function _resolveStyleValues(config) {
   const height = parseInt(config.height, 10) || DEFAULT_HEIGHT;
   const zIndex = parseInt(config.zIndex, 10) || DEFAULT_Z_INDEX;
   return { height, zIndex };
 }
 
-/** Build shared CSS properties for the banner wrapper. */
+/** CSS properties that the Shadow DOM wrapper and the fallback wrapper share. */
 function _buildWrapperCssProperties(height, zIndex, positionMode = "sticky") {
   const safePosition = VALID_POSITION_MODES.includes(positionMode) ? positionMode : "sticky";
   return `
@@ -50,7 +50,7 @@ function _buildAnchorCss(parentSelector) {
     }`;
 }
 
-/** Generate shadow DOM stylesheet for the banner. */
+/** Build the Shadow DOM stylesheet for the banner. */
 function _buildStyles(config, positionMode) {
   const { height, zIndex } = _resolveStyleValues(config);
   const theme = config.theme || "dark";
@@ -87,7 +87,7 @@ function _buildStyles(config, positionMode) {
   `;
 }
 
-/** Generate fallback stylesheet for environments without Shadow DOM. */
+/** Build the fallback stylesheet for browsers without Shadow DOM. */
 function _buildFallbackStyles(config, positionMode) {
   const { height, zIndex } = _resolveStyleValues(config);
 
@@ -124,8 +124,10 @@ function _applyCommonAttributes(host, wrapper) {
 /**
  * Create the banner host element with Shadow DOM (or fallback).
  * @param {object} config - Banner configuration.
- * @param {"sticky"|"fixed"} positionMode - CSS position for the wrapper ("sticky" for push, "fixed" for overlay).
- * @returns {{ host: Element, shadowRoot: ShadowRoot|null, wrapper: Element, fallbackStyle: Element|null }|null}
+ * @param {"sticky"|"fixed"} positionMode - CSS position for the wrapper ("sticky" for push, "fixed"
+ * for overlay).
+ * @returns {{ host: Element, shadowRoot: ShadowRoot|null, wrapper: Element, fallbackStyle:
+ * Element|null }|null}
  */
 export function createBannerHost(config = {}, positionMode = "sticky") {
   const logger = createLogger(config.debug);

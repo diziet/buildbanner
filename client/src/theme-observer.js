@@ -1,4 +1,4 @@
-/** Theme observer — watches data-theme on <html> for runtime theme switching. */
+/** For the auto theme, follow changes to data-theme on <html> and to prefers-color-scheme. */
 
 import {
   DARK_BG,
@@ -19,7 +19,7 @@ function _buildOverrideCss(scheme) {
   return `:host { --bb-bg: ${DARK_BG}; --bb-fg: ${DARK_FG}; --bb-link: ${DARK_LINK}; }`;
 }
 
-/** Read the current data-theme value from document.documentElement. */
+/** Return "dark" or "light" from data-theme on <html>, or null for any other value. */
 function _readDataTheme() {
   if (typeof document === "undefined") return null;
   const value = document.documentElement.getAttribute("data-theme");

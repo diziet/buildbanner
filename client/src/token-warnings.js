@@ -20,7 +20,10 @@ function _isSafeHostname(hostname) {
   return SAFE_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
 }
 
-/** Warn about a short token or a token on a public origin. Calls console.warn directly, so data-debug and the log cap do not apply. */
+/**
+ * Warn about a short token or a token on a public origin. Calls console.warn directly, so data-
+ * debug and the log cap do not apply.
+ */
 export function checkTokenWarnings(config) {
   try {
     if (config.token == null) return;
