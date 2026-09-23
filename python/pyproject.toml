@@ -19,7 +19,18 @@ Repository = "https://github.com/diziet/buildbanner"
 Issues = "https://github.com/diziet/buildbanner/issues"
 
 [project.optional-dependencies]
-test = ["pytest"]
+# The framework packages are imported by tests/test_flask.py, test_django.py and
+# test_fastapi.py; starlette's TestClient needs httpx; pytest-asyncio reads the asyncio_*
+# options below.
+# TODO: the repo pins no Python test dependency versions.
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "flask",
+    "django",
+    "starlette",
+    "httpx",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
