@@ -7,15 +7,15 @@
 
 ## Problem
 
-Every web project eventually grows a "what's deployed?" bar — showing the git SHA, branch, uptime, environment. Developers copy-paste this across projects, each time reimplementing:
+Every web project eventually gets a "what's deployed?" bar that shows the git SHA, branch, uptime and environment. Developers copy it from project to project, and each time they reimplement:
 
-- Git info extraction (branch, SHA, date, remote URL)
-- GitHub link generation (commit, branch, PR)
-- Safe HTML injection that never breaks the host app
-- Token/secret stripping from remote URLs
-- Graceful degradation when the endpoint is down
+- Reading the git information (branch, SHA, date, remote URL)
+- Building GitHub links (commit, branch, PR)
+- Inserting HTML without ever breaking the host app
+- Removing tokens and secrets from remote URLs
+- Showing nothing, with no error, when the endpoint is down
 
-This should be a 5-minute drop-in, not a weekend project.
+Adding the bar should take 5 minutes, not a weekend.
 
 ---
 
@@ -23,9 +23,9 @@ This should be a 5-minute drop-in, not a weekend project.
 
 **Two pieces, loosely coupled:**
 
-1. **Client** — A single `<script>` tag. Zero dependencies. Fetches a JSON endpoint, renders a thin banner. If anything fails, it silently does nothing.
+1. **Client** — A single `<script>` tag with no dependencies. It fetches a JSON endpoint and renders a thin banner. If anything fails, it silently does nothing.
 
-2. **Server contract** — A JSON schema for a `GET /buildbanner.json` endpoint. Any backend can implement it. Optional helper libraries make it one-liner middleware for Python, Rails, and Node.
+2. **Server contract** — A JSON schema for a `GET /buildbanner.json` endpoint, which any backend can implement. Optional helper libraries implement it as one-line middleware for Python, Rails and Node.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -56,10 +56,10 @@ Browser                          Server (any language)
 
 ### Why client-side rendering?
 
-- **Language agnostic** — server just returns JSON, no HTML templating needed
-- **Cacheable** — CDN-friendly static JS, only the JSON varies
-- **Safe** — banner lives in its own DOM scope, never touches app styles
-- **Optional** — remove the `<script>` tag in production, zero trace
+- **Language agnostic** — the server returns only JSON and needs no HTML templating
+- **Cacheable** — the JS is a static file that a CDN can serve; only the JSON changes
+- **Safe** — the banner is in its own DOM scope and never changes the app's styles
+- **Optional** — remove the `<script>` tag in production, and nothing of the banner remains
 
 ---
 
@@ -67,7 +67,7 @@ Browser                          Server (any language)
 
 ### Endpoint: `GET /buildbanner.json`
 
-Path is configurable on both client and server. Response:
+The client and the server can both change the path. The response:
 
 ```jsonc
 {
@@ -114,28 +114,28 @@ Path is configurable on both client and server. Response:
 
 ### Schema Rules
 
-1. **Only `sha` and `branch` are required.** All other fields including `server_started` are optional. Client renders what's present, ignores what's missing.
-2. **`_buildbanner.version`** is recommended. Client uses it to adapt to future contract changes. If absent, client assumes version 1.
-3. **`repo_url` MUST NOT contain tokens, passwords, or credentials.** Server helpers strip these automatically.
-4. **All timestamps are ISO 8601 UTC.** Client converts to local time for display.
-5. **`tests.status` and `build.status` drive indicator dots** — green/red/yellow/gray.
-6. **`custom` is a flat string→string map** in v1. Supports any number of key-value pairs; each renders as a `key: value` segment in alphabetical key order. Apps use this for domain-specific info (active ML model, worker count, cache stats, region, etc.). Server helpers automatically stringify non-string values. Client ignores any value that is not a string. Nested/typed values are planned for v2.
-7. **`tests.url` and `build.url` are clickable** — open a details page in new tab.
-8. **`server_started` vs `deployed_at`** — These track different things. `server_started` = when the process booted (drives the "uptime" counter). `deployed_at` = when this code version was deployed (shows "deployed 3h ago"). In serverless/FaaS where process uptime is meaningless, omit `server_started` and use `deployed_at` instead. In long-running servers, use both. Client renders whichever is present: uptime from `server_started`, deploy age from `deployed_at`.
+1. **Only `sha` and `branch` are required.** All other fields, including `server_started`, are optional. The client renders the fields that are present and skips the missing ones.
+2. **`_buildbanner.version`** is recommended. The client reads it to handle future contract changes. Without it, the client assumes version 1.
+3. **`repo_url` MUST NOT contain tokens, passwords, or credentials.** Server helpers remove them.
+4. **All timestamps are ISO 8601 UTC.** The client converts them to local time for display.
+5. **`tests.status` and `build.status` set the indicator dots** — green, red, yellow or gray.
+6. **`custom` is a flat string→string map** in v1. It holds any number of key-value pairs, and each renders as a `key: value` segment, in alphabetical order of key. Apps use it for their own information, such as the active ML model, worker count, cache statistics or region. Server helpers convert non-string values to strings. The client ignores any value that is not a string. Nested and typed values are planned for v2.
+7. **`tests.url` and `build.url` are clickable** — a click opens the details page in a new tab.
+8. **`server_started` vs `deployed_at`** — The two fields record different times. `server_started` is when the process started; the "uptime" counter is computed from it. `deployed_at` is when this version of the code was deployed, shown as "deployed 3h ago". In serverless or FaaS, where process uptime means nothing, omit `server_started` and set `deployed_at`. In a long-running server, set both. The client renders whichever is present: the uptime from `server_started` and the deploy age from `deployed_at`.
 
 ### Conceptual Field Groups
 
-The JSON is flat, but fields fall into logical groups. This aids documentation and future refactoring:
+The JSON is flat, but the fields fall into groups. The groups help with documentation and later refactoring:
 
 - **Identity**: `sha`, `sha_full`, `branch`, `commit_date`, `repo_url` — what code is running
-- **Runtime**: `server_started`, `deployed_at`, `port`, `environment`, `app_name` — where/how it's running
-- **Status**: `tests`, `build` — live health indicators
+- **Runtime**: `server_started`, `deployed_at`, `port`, `environment`, `app_name` — where and how it runs
+- **Status**: `tests`, `build` — current health indicators
 - **Custom**: `custom` — app-specific data
 - **Meta**: `_buildbanner` — protocol versioning
 
 ### Error Responses
 
-Any non-200 or malformed JSON → client silently hides the banner. No retries on initial load. Diagnostic details are always available via `console.debug` (visible only when DevTools is open with verbose logging), and promoted to `console.warn` when `data-debug="true"`. See **Diagnostic Logging** below.
+For any non-200 response or malformed JSON, the client silently hides the banner. It does not retry the initial load. The diagnostic details are always logged with `console.debug`, which DevTools shows only at the verbose log level, and also with `console.warn` when `data-debug="true"`. See **Diagnostic Logging** below.
 
 ---
 
@@ -154,7 +154,7 @@ Any non-200 or malformed JSON → client silently hides the banner. No retries o
 
 ### Auto-initialization
 
-Zero config if endpoint is at `/buildbanner.json`:
+No configuration is needed if the endpoint is at `/buildbanner.json`:
 
 ```html
 <script src="/static/buildbanner.min.js"></script>
@@ -183,12 +183,12 @@ Zero config if endpoint is at `/buildbanner.json`:
 | `data-position` | `top` | `top`, `bottom` |
 | `data-theme` | `dark` | `dark`, `light`, `auto` (follows prefers-color-scheme) |
 | `data-dismiss` | `session` | `session` (sessionStorage), `permanent` (localStorage), `none` (no ✕) |
-| `data-env-hide` | (none) | Comma-separated envs to auto-hide: `"production,staging"` |
+| `data-env-hide` | (none) | Comma-separated environments in which the banner hides: `"production,staging"` |
 | `data-height` | `28` | Banner height in px. Minimum 24, maximum 48. |
-| `data-debug` | `false` | `true` promotes diagnostic logs to `console.warn`. Logs are always available at `console.debug` level regardless of this setting. |
-| `data-poll` | `0` | Seconds between re-fetches (0 = fetch once). Enables live test status, build status, uptime. |
-| `data-push` | `true` | `true` adds `padding-top` to `<html>` equal to banner height, pushing the app down. `false` floats over content (sticky). **If `<html>` already has non-zero padding, push mode automatically falls back to overlay to avoid layout conflicts.** See **Push Mode Safety** below. |
-| `data-token` | (none) | Shared token sent as `Authorization: Bearer <token>` header on fetch. **Not a security boundary — intended for staging/internal use only.** See **Token Auth** below. |
+| `data-debug` | `false` | `true` also writes the diagnostic logs with `console.warn`. They are always written with `console.debug`, whatever this setting is. |
+| `data-poll` | `0` | Seconds between fetches (0 = fetch once). Keeps the test status, build status and uptime current. |
+| `data-push` | `true` | `true` adds a `padding-top` equal to the banner height to `<html>`, which moves the app down. `false` places the banner over the content (sticky). **If `<html>` already has a non-zero padding, push mode falls back to the overlay to avoid a layout conflict.** See **Push Mode Safety** below. |
+| `data-token` | (none) | A shared token that the client sends in an `Authorization: Bearer <token>` header with each fetch. **Not a security boundary; meant only for staging and internal use.** See **Token Auth** below. |
 
 ### Programmatic API
 
@@ -211,41 +211,41 @@ BuildBanner.isVisible(); // boolean
 
 ### Singleton & Multi-Instance Guard
 
-Only one BuildBanner instance may exist per page. If the script is included multiple times (common in micro-frontend setups or template includes), the second initialization is a no-op and logs a `console.debug` message: `"[BuildBanner] Already initialized — skipping duplicate script."` The active instance is tracked via `window[Symbol.for("buildbanner")]` (with `window.__buildBannerInstance` as a fallback for environments without Symbol support).
+A page can have only one BuildBanner instance. If the script is included more than once, which is common with micro-frontends and template includes, the second initialization does nothing and logs a `console.debug` message: `"[BuildBanner] Already initialized — skipping duplicate script."` The active instance is stored in `window[Symbol.for("buildbanner")]`, or in `window.__buildBannerInstance` where Symbol is not supported.
 
-After `BuildBanner.destroy()`, `window.BuildBanner` is **not deleted** — its methods become no-ops that return silently. This avoids surprising code that holds a reference to the object (common in bundler setups or framework integration). A new active instance can be created by calling `BuildBanner.init()`.
+After `BuildBanner.destroy()`, `window.BuildBanner` is **not deleted**: its methods do nothing and return silently. Code that holds a reference to the object, which is common with bundlers and framework integrations, therefore keeps working. Calling `BuildBanner.init()` creates a new active instance.
 
 ### Rendering Rules
 
-1. **Prepended to `<body>`** as first child (or appended if `position=bottom`). When `data-push="true"` (default), injects `padding-top` on `<html>` equal to banner height so the app is pushed down rather than obscured. Removes the padding on destroy. See **Push Mode Safety** for edge cases.
-2. **Default height: 28px** (configurable via `data-height`, min 24, max 48). Never wraps, never expands. Overflow: hidden + ellipsis.
-3. **Shadow DOM** to isolate styles. The shadow root's top-level wrapper uses `all: initial` to prevent inherited CSS properties (`font-family`, `color`, `line-height`, etc.) from bleeding in from the host app. Falls back to namespaced classes (`.__buildbanner-*`) via `attachShadow` feature detection; if `attachShadow` is unavailable, all styles use `.__buildbanner-` prefixed selectors scoped with high specificity and include explicit resets for inheritable properties.
-4. **z-index: 999999** (high but not max, avoidable by host app). Position: sticky. Configurable via `BuildBanner.init({ zIndex })` for apps that need to adjust.
+1. **Prepended to `<body>`** as the first child, or appended if `position=bottom`. When `data-push="true"` (the default), the client adds a `padding-top` equal to the banner height to `<html>`, so the app moves down instead of being covered. Destroy removes the padding. See **Push Mode Safety** for the edge cases.
+2. **Default height: 28px** (set with `data-height`, min 24, max 48). The banner never wraps or grows. Overflow is hidden, with an ellipsis.
+3. **Shadow DOM** isolates the styles. The shadow root's top-level wrapper sets `all: initial`, so inherited CSS properties from the host app (`font-family`, `color`, `line-height`, etc.) do not apply. The client checks for `attachShadow`. If `attachShadow` is unavailable, it falls back to namespaced classes (`.__buildbanner-*`): every style then uses a `.__buildbanner-` prefixed selector with high specificity and explicit resets for the inheritable properties.
+4. **z-index: 999999**, high but not the maximum, so the host app can place elements above it. Position: sticky. An app that needs another value sets it with `BuildBanner.init({ zIndex })`.
 5. **GitHub links open in new tab** (`target="_blank" rel="noopener"`).
-6. **Click-to-copy SHA** — clicking the SHA segment copies the full SHA (`sha_full` or `sha`) to the clipboard. On success, the SHA text is briefly replaced in-place with "Copied!" for 1.5 seconds, then reverts to the SHA. This avoids tooltip clipping issues caused by the banner's `overflow: hidden` and fixed height within the Shadow DOM boundary. Falls back to selecting the text if Clipboard API is unavailable.
-7. **Branch hiding** — if `branch` is `"HEAD"`, empty, or null, the branch segment is hidden entirely. Silence is better than misleading data.
-8. **Uptime computed client-side** from `server_started` — always live, no polling needed. Omitted if `server_started` absent. **Deploy age** computed from `deployed_at` — shows "deployed 3h ago". If both present, both are shown. If only `deployed_at` is present (serverless), uptime is omitted.
-9. **Status dots**: 🟢 pass/fresh, 🔴 fail/stale, 🟡 running/building, ⚪ idle/unknown. Implemented as text emoji for v1 (portable, zero dependencies). Internal abstraction allows swapping for CSS dots in v2 without API changes.
-10. **`tests.url`** makes the test segment a clickable link to the details page.
-11. **Custom value enforcement** — client ignores any `custom` value that is not a string. Server helpers stringify automatically.
-12. **Polling** re-fetches every N seconds, updates banner in-place. Only mutable fields change (tests, build, custom). On consecutive fetch failures, backs off exponentially (N → 2N → 4N, capped at 5 minutes). Resets to original interval on next success. **Polling is visibility-aware** — see **Visibility-Aware Polling** below.
+6. **Click-to-copy SHA** — a click on the SHA segment copies the full SHA (`sha_full` or `sha`) to the clipboard. On success, the segment shows "Copied!" in place of the SHA for 1.5 seconds, then shows the SHA again. A tooltip would be clipped by the banner's `overflow: hidden` and fixed height inside the Shadow DOM, so the text is swapped in place instead. Without the Clipboard API, the client selects the text.
+7. **Branch hiding** — if `branch` is `"HEAD"`, empty, or null, the branch segment is not shown. No segment is better than a misleading one.
+8. **Uptime computed client-side** from `server_started`, so it stays current without polling. It is omitted when `server_started` is absent. **Deploy age** is computed from `deployed_at` and shows as "deployed 3h ago". If both fields are present, both are shown. If only `deployed_at` is present (serverless), the uptime is omitted.
+9. **Status dots**: 🟢 pass/fresh, 🔴 fail/stale, 🟡 running/building, ⚪ idle/unknown. v1 draws them as text emoji, which work everywhere and need no dependency. An internal abstraction lets v2 switch to CSS dots without an API change.
+10. **`tests.url`** makes the test segment a link to the details page.
+11. **Custom value enforcement** — the client ignores any `custom` value that is not a string. Server helpers convert values to strings.
+12. **Polling** fetches again every N seconds and updates the banner in place. Only the fields that can change are updated (tests, build, custom). After consecutive fetch failures, the interval grows exponentially (N → 2N → 4N, up to 5 minutes). The next success resets it to the original interval. **Polling is visibility-aware** — see **Visibility-Aware Polling** below.
 
 ### Push Mode Safety
 
-The `data-push="true"` mode adds `padding-top` (or `padding-bottom`) to the `<html>` element to displace the app content.
+The `data-push="true"` mode adds `padding-top` (or `padding-bottom`) to the `<html>` element to move the app content.
 
-**Guard: existing padding detection.** Before applying padding, the client checks the computed `padding-top` of `<html>`. If it is already non-zero (set by the host app, a CSS framework, or another tool), BuildBanner **does not modify it** and silently falls back to overlay mode (`position: fixed`, no push). This prevents conflicts with apps that manipulate `<html>` styles for fullscreen layouts, mobile viewport hacks, or SPA router measurements.
+**Guard: existing padding detection.** Before it adds padding, the client reads the computed `padding-top` of `<html>`. If it is already non-zero (set by the host app, a CSS framework, or another tool), BuildBanner **does not modify it** and silently falls back to overlay mode (`position: fixed`, no push). This avoids conflicts with apps that change `<html>` styles for fullscreen layouts, mobile viewport workarounds, or SPA router measurements.
 
-**On destroy**, the client uses a **subtract-not-overwrite** strategy to avoid clobbering padding added by other tools (cookie banners, notification bars, etc.) after BuildBanner initialized:
+**On destroy**, the client uses a **subtract-not-overwrite** strategy, so it does not overwrite padding that other tools (cookie banners, notification bars, etc.) added after BuildBanner initialized:
 
 1. Read the current computed `padding-top`.
-2. If it equals `originalPadding + bannerHeight` (i.e., no one else touched it), restore to `originalPadding`.
-3. If it differs (another tool added or removed padding after init), subtract `bannerHeight` from the current value. This preserves the other tool's contribution.
-4. Clamp to `0` — never set negative padding.
+2. If it equals `originalPadding + bannerHeight` (no other tool changed it), restore `originalPadding`.
+3. If it differs (another tool added or removed padding after init), subtract `bannerHeight` from the current value. This keeps the other tool's padding.
+4. Clamp to `0`, so the padding is never negative.
 
-This handles the common SPA scenario where a cookie consent banner adds 40px of padding after BuildBanner is already running. A naive restore would wipe the cookie banner's layout; the subtract approach preserves it.
+This covers a common SPA case: a cookie consent banner adds 40px of padding after BuildBanner is running. Writing back the original value would remove the cookie banner's padding; subtracting keeps it.
 
-**Rule of thumb: if `<html>` already has padding, don't touch it.**
+**Rule of thumb: if `<html>` already has padding, leave it unchanged.**
 
 ### Link Generation
 
@@ -256,7 +256,7 @@ When `repo_url` is present:
 | `sha` | `{repo_url}/commit/{sha_full or sha}` |
 | `branch` | `{repo_url}/tree/{branch}` |
 
-**Safe link generation.** Links are only generated when `repo_url` matches one of these **exact host patterns**:
+**Safe link generation.** The client builds links only when `repo_url` matches one of these **exact host patterns**:
 
 | Host | Commit path | Tree path |
 |------|-------------|-----------|
@@ -264,13 +264,13 @@ When `repo_url` is present:
 | `gitlab.com` | `/-/commit/{sha}` | `/-/tree/{branch}` |
 | `bitbucket.org` | `/commits/{sha}` | `/src/{branch}` |
 
-For all other hosts — including self-hosted GitLab, Gitea, Azure DevOps, and SSH-only remotes — the client renders the SHA and branch as **plain text with no links**. This avoids generating broken links that look authoritative.
+For every other host, including self-hosted GitLab, Gitea, Azure DevOps, and SSH-only remotes, the client renders the SHA and branch as **plain text with no links**. The client therefore never shows a broken link that looks correct.
 
-Previous drafts matched `gitlab.*` as a wildcard, which would incorrectly match unrelated domains and miss self-hosted instances at `code.company.com` or `git.internal`. The exact-match approach is narrower but never wrong.
+Earlier drafts matched `gitlab.*` as a wildcard. That would match unrelated domains and miss self-hosted servers at `code.company.com` or `git.internal`. Exact matching covers fewer hosts but is never wrong.
 
-**v2: `repo_kind` field.** To support self-hosted Git instances, v2 will add an optional `repo_kind` field to the JSON contract (`"github"` | `"gitlab"` | `"bitbucket"` | `"unknown"`). Server helpers will emit this based on the remote URL, moving host detection to the server where it belongs. The client will use `repo_kind` for link generation instead of guessing from the hostname. Until then, self-hosted users can use `BuildBanner.init({ hostPatterns: [...] })` to register custom patterns via the programmatic API.
+**v2: `repo_kind` field.** For self-hosted Git servers, v2 will add an optional `repo_kind` field to the JSON contract (`"github"` | `"gitlab"` | `"bitbucket"` | `"unknown"`). Server helpers will set it from the remote URL, which moves host detection to the server. The client will build links from `repo_kind` instead of guessing from the hostname. Until then, self-hosted users can register their own patterns with `BuildBanner.init({ hostPatterns: [...] })`.
 
-The client never attempts to "guess" URL structures beyond the paths listed above. Silence is better than wrong links.
+The client never guesses a URL structure beyond the paths listed above. No link is better than a wrong link.
 
 ### Banner Layout
 
@@ -282,31 +282,31 @@ The client never attempts to "guess" URL structures beyond the paths listed abov
 - Links: subtle underline on hover, same muted color as text
 - SHA: click to copy full SHA to clipboard (in-place "Copied!" text swap for 1.5s)
 - Dismiss ✕ on far right
-- Truncates from right if window narrow
+- Truncated from the right when the window is narrow
 - Status dots are text emoji (no image dependencies)
 
 ### Accessibility
 
-BuildBanner is a dev tool, but dev tools get left on in demos, staging walkthroughs, and screenshare sessions. The banner respects basic accessibility requirements:
+BuildBanner is a dev tool, but dev tools stay enabled in demos, staging walkthroughs and screen-sharing sessions. The banner meets these basic accessibility requirements:
 
-- **`role="status"` and `aria-live="polite"`** on the status segment container (tests, build), **not** on the banner host element. This ensures screen readers announce meaningful state changes (pass→fail, fresh→stale) without being spammed by uptime ticks, deploy-age updates, or identical poll responses. The banner host itself has `role="toolbar"` for identification. On poll updates, the live region content is only updated when a `tests.status` or `build.status` value actually changes from its previous value.
+- **`role="status"` and `aria-live="polite"`** on the status segment container (tests, build), **not** on the banner host element. Screen readers then announce the state changes that matter (pass→fail, fresh→stale), and not every uptime tick, deploy-age update or identical poll response. The banner host has `role="toolbar"` for identification. On a poll update, the client changes the live region only when a `tests.status` or `build.status` value differs from its previous value.
 - **`aria-label="Build information banner"`** on the host for identification.
 - **Keyboard-navigable close button** with visible `:focus-visible` ring.
-- **All interactive elements** (close button, SHA copy, links) are reachable via Tab and activatable via Enter/Space.
-- **No auto-focus** — the banner never steals focus from the host app on initial render or polling updates.
-- **Sufficient contrast** — default dark theme uses WCAG AA-compliant contrast ratios for all text elements.
+- **All interactive elements** (close button, SHA copy, links) are reachable with Tab and activated with Enter or Space.
+- **No auto-focus** — the banner never takes focus from the host app, on the first render or on a polling update.
+- **Sufficient contrast** — the default dark theme meets the WCAG AA contrast ratio for all text.
 
 ---
 
 ## Visibility-Aware Polling
 
-When `data-poll` is enabled, the client uses the [Page Visibility API](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API) to avoid unnecessary network activity:
+When `data-poll` is set, the client uses the [Page Visibility API](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API) to avoid needless network requests:
 
-- **When `document.visibilityState === 'hidden'`** (tab backgrounded, laptop lid closed): polling pauses. Scheduled fetches are skipped, not deferred.
-- **When the page becomes visible again**: an immediate fetch is triggered, then normal polling resumes.
-- **Backoff resets only on successful fetch while visible** — returning to a tab does not reset backoff if the endpoint is still failing.
+- **When `document.visibilityState === 'hidden'`** (tab in the background, laptop lid closed): polling pauses. Scheduled fetches are skipped, not postponed.
+- **When the page becomes visible again**: the client fetches at once, then resumes normal polling.
+- **Backoff resets only on successful fetch while visible** — returning to the tab does not reset the backoff while the endpoint still fails.
 
-This prevents background tabs from waking network radios, generating noise in DevTools network panels, and creating unnecessary server load. It is a small addition with a large ergonomics payoff.
+Background tabs therefore do not wake network radios, add entries to the DevTools network panel, or add server load.
 
 ---
 
@@ -314,39 +314,39 @@ This prevents background tabs from waking network radios, generating noise in De
 
 ### Purpose and Limitations
 
-`data-token` provides a lightweight shared-secret mechanism for restricting access to the `/buildbanner.json` endpoint. The token is sent as an `Authorization: Bearer <token>` header.
+`data-token` is a simple shared secret that restricts access to the `/buildbanner.json` endpoint. The client sends it in an `Authorization: Bearer <token>` header.
 
-**⚠️ `data-token` is a speed bump, not a security boundary.**
+**⚠️ `data-token` only slows a visitor down. It is not a security boundary.**
 
-It is intended exclusively for:
+It is meant only for:
 
 - `localhost` development
 - Internal network / VPN-only staging
 - Environments where the HTML source is not publicly accessible
 
-It is **not safe** for production or any environment where page source is viewable, because:
+It is **not safe** in production or in any environment where users can view the page source, because:
 
-- The token is visible in HTML source (`View Source`, browser extensions, CSP reports)
-- Any user with page access can extract it
-- It cannot be rotated without redeploying all clients
+- The token is visible in the HTML source (`View Source`, browser extensions, CSP reports)
+- Any user who can load the page can read it
+- Changing it means redeploying every client
 
-**Primary defense should always be network-level controls**: reverse-proxy auth, IP allowlisting, or VPN. Token auth is a secondary "are you sure?" check.
+**The primary defense should always be network-level controls**: reverse-proxy auth, IP allowlisting, or VPN. Token auth is a secondary "are you sure?" check.
 
 ### Client-Side Guardrails
 
-The client enforces two warnings at initialization:
+The client logs two warnings at initialization:
 
-1. **Short token warning**: If `data-token` is shorter than 16 characters, the client logs a `console.warn`: `"Token is shorter than 16 characters. Short tokens offer minimal protection."` This catches accidental placeholder values like `"test"` or `"secret"`.
+1. **Short token warning**: If `data-token` is shorter than 16 characters, the client logs a `console.warn`: `"Token is shorter than 16 characters. Short tokens offer minimal protection."` This catches placeholder values left in by mistake, such as `"test"` or `"secret"`.
 
-2. **Public hostname warning**: If the page is served over HTTPS on a hostname that does not match `localhost`, `127.0.0.1`, `*.local`, `*.internal`, or `*.test`, the client logs a `console.warn`: `"Token auth detected on a public-facing origin. data-token is intended for staging/internal use only."` This is a best-effort heuristic, not a hard block.
+2. **Public hostname warning**: If the page is served over HTTPS on a hostname that does not match `localhost`, `127.0.0.1`, `*.local`, `*.internal`, or `*.test`, the client logs a `console.warn`: `"Token auth detected on a public-facing origin. data-token is intended for staging/internal use only."` The check is a heuristic and blocks nothing.
 
 ### Server-Side Guardrails
 
 Server helpers should:
 
-- **Never throw on token misconfiguration.** A dev tool middleware that prevents a server from starting violates the Cardinal Rule. If the configured token is shorter than 16 characters, the server helper logs a startup warning (`"BuildBanner: token is shorter than 16 characters, auth check disabled"`) and **disables token validation** — the endpoint serves responses without requiring auth until the token is fixed. The server still starts normally.
+- **Never throw on a token misconfiguration.** Dev tool middleware that stops a server from starting breaks the Cardinal Rule. If the configured token is shorter than 16 characters, the server helper logs a startup warning (`"BuildBanner: token is shorter than 16 characters, auth check disabled"`) and **disables token validation**: the endpoint serves responses without auth until the token is fixed. The server still starts normally.
 - Log a warning if `environment=production` and token auth is enabled.
-- Document that token auth is not a substitute for network-level access control.
+- Document that token auth does not replace network-level access control.
 
 ---
 
@@ -354,52 +354,52 @@ Server helpers should:
 
 ### Default Path
 
-The default endpoint is `/buildbanner.json`. This is intentionally predictable for zero-config setup.
+The default endpoint is `/buildbanner.json`. It is predictable on purpose, so the banner works with no configuration.
 
 ### Guidance for Shared Environments
 
-For staging servers, shared test environments, or any environment accessible beyond the immediate development team, rename the endpoint to reduce discoverability:
+For staging servers, shared test environments, or any environment that people outside the development team can reach, rename the endpoint so that it is harder to find:
 
 ```html
 data-endpoint="/_internal/build_9f3a2.json"
 ```
 
-This is not security through obscurity — it is a practical measure to avoid triggering automated scanners and satisfying organizational policies that prohibit well-known info endpoints.
+Renaming is not meant as security. It keeps automated scanners from flagging the endpoint, and it satisfies organizational policies that forbid well-known info endpoints.
 
 ### Server Helper Defaults
 
 Server helpers should:
 
 - Default to `/buildbanner.json` for development.
-- Accept a `path` configuration parameter for custom paths.
-- Optionally support a production guard: return 404 on the endpoint unless explicitly enabled via configuration. This prevents accidental exposure if the middleware is left in a production deployment.
+- Accept a `path` parameter for another path.
+- Optionally support a production guard: the endpoint returns 404 unless the configuration enables it. Middleware left in a production deployment by mistake then exposes nothing.
 
 ---
 
 ## Diagnostic Logging
 
-BuildBanner uses a two-tier logging strategy that balances debuggability with quiet default behavior.
+BuildBanner logs at two levels, so it is quiet by default and still gives the details needed for debugging.
 
 ### Always-on: `console.debug`
 
-All diagnostic messages are logged via `console.debug()` regardless of configuration. These messages are invisible in standard DevTools unless the user explicitly enables the "Verbose" log level. This means:
+Every diagnostic message is logged with `console.debug()`, whatever the configuration. DevTools hides these messages unless the user enables the "Verbose" log level. As a result:
 
-- Zero noise in normal use.
-- Full diagnostic trail available when needed — just open DevTools and enable verbose logging.
+- Normal use shows no messages.
+- The full diagnostic record is there when needed: open DevTools and enable verbose logging.
 
-Messages include: fetch failures (with HTTP status), JSON parse errors (with truncated response body), push mode fallbacks, visibility state changes, and singleton guard activations.
+The messages cover fetch failures (with the HTTP status), JSON parse errors (with the truncated response body), push mode fallbacks, visibility state changes, and duplicate initializations that the singleton guard skipped.
 
 ### Opt-in: `console.warn` via `data-debug="true"`
 
-When `data-debug="true"` is set, the same diagnostic messages are promoted to `console.warn`, making them visible by default in DevTools. This is useful during initial integration or when debugging endpoint issues.
+When `data-debug="true"` is set, the client also logs the same messages with `console.warn`, which DevTools shows by default. This helps during the first integration and when debugging endpoint problems.
 
 ### Session log cap
 
-Diagnostic messages are capped at 20 per session to prevent log flooding during extended polling failures. After the cap, logging stops silently.
+The client logs at most 20 diagnostic messages per session, so a long run of polling failures cannot flood the console. After the 20th message, logging stops silently.
 
 ### Why this matters
 
-Without this, users encounter "BuildBanner is broken" when the actual problem is their endpoint returning malformed JSON or a 403. The always-on `console.debug` approach costs nothing in normal operation but saves significant debugging time.
+Without these logs, users conclude that "BuildBanner is broken" when their endpoint returns malformed JSON or a 403. The `console.debug` logs cost nothing in normal use and save debugging time.
 
 ---
 
@@ -409,27 +409,27 @@ Without this, users encounter "BuildBanner is broken" when the actual problem is
 
 Each helper is a **single-file, zero-dependency** middleware. It:
 
-1. Reads git info **once at startup** (cached in memory)
-2. **Environment variables override git**: `BUILDBANNER_SHA`, `BUILDBANNER_BRANCH`, `BUILDBANNER_REPO_URL`, `BUILDBANNER_COMMIT_DATE`, `BUILDBANNER_DEPLOYED_AT`. Checked first; git is the fallback. This makes BuildBanner usable in distroless images, stripped Docker layers, Bazel builds, Nix, and any environment without `.git/`.
-3. Sanitizes remote URL (strips tokens, userinfo, `.git` suffix)
+1. Reads the git information **once at startup** and caches it in memory
+2. **Environment variables override git**: `BUILDBANNER_SHA`, `BUILDBANNER_BRANCH`, `BUILDBANNER_REPO_URL`, `BUILDBANNER_COMMIT_DATE`, `BUILDBANNER_DEPLOYED_AT`. They are checked first, and git is the fallback. BuildBanner therefore works in distroless images, stripped Docker layers, Bazel builds, Nix, and any environment without `.git/`.
+3. Sanitizes the remote URL (removes tokens, userinfo and the `.git` suffix)
 4. Serves `GET /buildbanner.json`
-5. Accepts optional `extras` callback for dynamic fields (test status, build freshness, custom data)
-6. **Never throws.** If both env vars and git fail, fields are null. If extras callback fails, response omits extras.
-7. **Stringifies custom values.** Any non-string value in `custom` is converted via `String()` / `str()` / `.to_s`. Client ignores non-string values as a safety net.
+5. Accepts an optional `extras` callback for dynamic fields (test status, build freshness, custom data)
+6. **Never throws.** If both the environment variables and git fail, the fields are null. If the `extras` callback fails, the response omits the extras.
+7. **Stringifies custom values.** Any non-string value in `custom` is converted with `String()` / `str()` / `.to_s`. The client also ignores non-string values, in case a server sends one.
 
 ### Repo URL Sanitization
 
-Server helpers sanitize `repo_url` by stripping:
+Server helpers sanitize `repo_url` by removing:
 
 - Userinfo (`user:pass@`, `oauth2:token@`)
 - `.git` suffix
 - Trailing slashes
 
-**Self-hosted Git edge cases.** Sanitization rules are tested against GitHub, GitLab, and Bitbucket URL formats. For self-hosted GitLab, Gitea, Azure DevOps, or SSH-only remotes with nonstandard paths:
+**Self-hosted Git edge cases.** The sanitization rules are tested against GitHub, GitLab and Bitbucket URL formats. For self-hosted GitLab, Gitea, Azure DevOps, or SSH-only remotes with nonstandard paths:
 
-- Stripping `.git` or userinfo may produce a URL that does not resolve to a valid web page.
-- Server helpers strip what they can but make no guarantees about the resulting URL being navigable.
-- The **client** is responsible for safe link generation — it will only generate clickable links for known host patterns and render plain text otherwise (see **Link Generation** above).
+- Removing `.git` or the userinfo may produce a URL that is not a valid web page.
+- Server helpers remove what they can, but they do not guarantee that the resulting URL opens a page.
+- The **client** is responsible for safe links: it builds links only for known host patterns and renders plain text otherwise (see **Link Generation** above).
 
 **Rule: helpers sanitize, clients validate. Neither guesses.**
 
@@ -527,54 +527,54 @@ Package: `npm install buildbanner` — single file, no dependencies.
 
 ## Caching & Polling
 
-Caching and polling can conflict if not handled explicitly.
+Caching and polling can conflict unless both are handled explicitly.
 
 **Server helpers** set the following response headers by default:
 
 | Header | Value | Reason |
 |--------|-------|--------|
-| `Cache-Control` | `no-store` | Ensures every request gets fresh data. CDNs and browsers will not serve stale responses. |
+| `Cache-Control` | `no-store` | Every request gets current data. CDNs and browsers do not serve stale responses. |
 | `Content-Type` | `application/json` | Standard JSON response. |
 
-**Client polling** sends `Cache-Control: no-cache` on re-fetch requests as an additional cache-busting signal for intermediate proxies (CDNs, service workers, reverse proxies).
+**Client polling** sends `Cache-Control: no-cache` with each repeated fetch, a second signal to intermediate proxies (CDNs, service workers, reverse proxies) not to serve a cached copy.
 
-**No implicit caching.** The server always responds with `no-store`. If you want CDN caching for low-traffic setups (e.g., a static deployment where the JSON changes only on deploy), configure your server helper explicitly with a cache policy: `buildbanner({ cache: { maxAge: 60 } })`. This overrides the default `no-store` with `private, max-age=60`. The client will still send `no-cache` on polling re-fetches.
+**No implicit caching.** The server always responds with `no-store` unless you configure otherwise. For CDN caching in a low-traffic setup, such as a static deployment where the JSON changes only on deploy, give the server helper a cache policy: `buildbanner({ cache: { maxAge: 60 } })`. It replaces the default `no-store` with `private, max-age=60`. The client still sends `no-cache` with polling fetches.
 
-If you are serving `buildbanner.json` through a CDN or reverse proxy and using polling, ensure your cache layer respects `Cache-Control: no-store` from the origin. Otherwise users will file "polling doesn't update" bugs that are actually CDN behavior.
+If you serve `buildbanner.json` through a CDN or reverse proxy and use polling, check that the cache honors `Cache-Control: no-store` from the origin. Otherwise users will report "polling doesn't update" bugs that the CDN causes.
 
 ---
 
 ## Content Security Policy (CSP) Compatibility
 
-BuildBanner is designed to work under strict CSPs:
+BuildBanner is built to work under a strict CSP:
 
-- **No `eval()`** — never used.
-- **No `innerHTML`** — all DOM content is set via `textContent` and `createElement`.
-- **No inline styles** — all styling is via class-based CSS (inside Shadow DOM or namespaced fallback classes). No `style=""` attributes.
+- **No `eval()`** — never called.
+- **No `innerHTML`** — all DOM content is set with `textContent` and `createElement`.
+- **No inline styles** — all styles are class-based CSS (inside the Shadow DOM, or the namespaced fallback classes). No `style=""` attributes.
 - **No inline scripts** — BuildBanner loads as an external script file.
 
-**If self-hosting**, no CSP changes are needed beyond allowing your own origin.
+**If you self-host**, the CSP needs no change beyond allowing your own origin.
 
-**If loading from a CDN** (requires publishing to npm first), add the CDN domain to `script-src`:
+**If you load it from a CDN** (which requires publishing to npm first), add the CDN domain to `script-src`:
 
 ```
 Content-Security-Policy: script-src 'self' https://cdn.example.com;
 ```
 
-**If using Shadow DOM**, no additional CSP directives are required — Shadow DOM styles are encapsulated and do not trigger `style-src` violations.
+**With Shadow DOM**, no extra CSP directive is required: styles inside the shadow root do not trigger `style-src` violations.
 
 ---
 
 ## Security Posture
 
-The `/buildbanner.json` endpoint exposes git metadata (SHA, branch, repo URL) that may be sensitive on public-facing environments. BuildBanner provides multiple layers of defense:
+The `/buildbanner.json` endpoint exposes git metadata (SHA, branch, repo URL), which may be sensitive in a public-facing environment. BuildBanner has several layers of defense:
 
-1. **`data-env-hide`** — auto-hides the banner for specified environments. Set `data-env-hide="production,staging"` to suppress rendering when the response's `environment` field matches. **Note:** the client must still perform the fetch to learn the environment value. `data-env-hide` suppresses rendering, not the network request.
-2. **`data-token`** — sends a Bearer token on fetch. Server helpers can validate this token and return 401 for unauthorized requests. **This is a speed bump, not a security boundary.** See **Token Auth** above for full details and limitations.
-3. **Same-origin by default** — the client fetches from the same origin. No CORS headers are set by server helpers, so cross-origin requests fail silently.
-4. **Remove the script tag** — the simplest production defense. If `<script src="buildbanner.min.js">` is not in your production HTML, there is zero client-side footprint.
-5. **Network-level controls** — for staging environments accessible on the public internet, restrict `/buildbanner.json` via IP allowlisting or VPN at the reverse proxy layer. **This is the recommended primary defense.** Token auth and `data-env-hide` are secondary layers.
-6. **Endpoint renaming** — for shared or semi-public staging environments, rename the endpoint path to reduce discoverability by automated scanners. See **Endpoint Configuration** above.
+1. **`data-env-hide`** — hides the banner in the listed environments. Set `data-env-hide="production,staging"` so that the banner does not render when the response's `environment` field matches. The client must still fetch to read the environment value: `data-env-hide` stops the rendering, not the network request.
+2. **`data-token`** — the client sends a Bearer token with each fetch. Server helpers can check the token and return 401 for unauthorized requests. **It only slows a visitor down and is not a security boundary.** See **Token Auth** above for the details and limits.
+3. **Same-origin by default** — the client fetches from the same origin. Server helpers set no CORS headers, so cross-origin requests fail silently.
+4. **Remove the script tag** — the simplest defense in production. If `<script src="buildbanner.min.js">` is not in your production HTML, nothing of BuildBanner runs in the browser.
+5. **Network-level controls** — for a staging environment reachable from the public internet, restrict `/buildbanner.json` with IP allowlisting or a VPN at the reverse proxy. **This is the recommended primary defense.** Token auth and `data-env-hide` are secondary layers.
+6. **Endpoint renaming** — in a shared or semi-public staging environment, rename the endpoint path so that automated scanners are less likely to find it. See **Endpoint Configuration** above.
 
 ---
 
@@ -593,7 +593,7 @@ The banner renders segments in this fixed order. Missing fields are skipped, not
 9. `custom` fields (rendered in **alphabetical key order** for stability)
 10. Dismiss ✕
 
-This ordering is not configurable in v1. Stable ordering prevents "why did this jump around?" complaints when fields appear or disappear between polls.
+The order cannot be changed in v1. A fixed order keeps segments from moving when fields appear or disappear between polls.
 
 ---
 
@@ -649,19 +649,19 @@ This ordering is not configurable in v1. Stable ordering prevents "why did this 
 
 ### Target: <3KB gzipped
 
-The client library targets <3KB gzipped. This budget is tight given the feature set (Shadow DOM, polling, backoff, clipboard fallback, push mode, CSP safety, diagnostic logging, visibility API), but achievable with disciplined implementation.
+The client library's target is <3KB gzipped. The budget is tight for the feature set (Shadow DOM, polling, backoff, clipboard fallback, push mode, CSP safety, diagnostic logging, visibility API), but it can be met if each feature is implemented with care for size.
 
 ### Enforcement
 
-- **CI size gate**: the build pipeline includes a gzipped size check. Builds fail if the output exceeds the budget.
-- **No optional dependencies**: all features are implemented with browser APIs only. No polyfills are bundled. Clipboard API falls back to text selection; no clipboard polyfill.
-- **Size reported on every PR**: the CI pipeline comments the current gzipped size on pull requests to make regressions immediately visible.
+- **CI size gate**: the build pipeline checks the gzipped size, and a build fails when the output exceeds the budget.
+- **No optional dependencies**: all features use only browser APIs. No polyfills are bundled. Without the Clipboard API, the client selects the text; there is no clipboard polyfill.
+- **Size reported on every PR**: the CI pipeline posts the current gzipped size as a comment on each pull request, so a regression shows up at once.
 
 ### Policy
 
 - **v1 feature freeze**: no new client features after v1.0 ships. Bug fixes only.
-- **Size regression policy**: any PR that increases gzipped size by >100 bytes requires explicit justification and sign-off.
-- **The psychological advantage**: "<3KB" is the drop-in selling point. If it grows silently, the project loses its positioning.
+- **Size regression policy**: any PR that increases the gzipped size by >100 bytes needs a stated reason and sign-off.
+- **Why the number matters**: "<3KB" is the main reason to add the script without a second thought. If the size grows unnoticed, the project loses that reason.
 
 ---
 
@@ -669,15 +669,15 @@ The client library targets <3KB gzipped. This budget is tight given the feature 
 
 ### SPA Considerations
 
-In single-page applications, BuildBanner must clean up completely when the view changes or the app unmounts the banner. `BuildBanner.destroy()` performs the following:
+In a single-page application, BuildBanner must remove everything it added when the view changes or the app unmounts the banner. `BuildBanner.destroy()` does the following:
 
 1. Removes the `<build-banner>` element from the DOM.
-2. Restores `<html>` padding using subtract-not-overwrite (see **Push Mode Safety**). If no other tool modified the padding, restores to original value. If another tool added padding after init, subtracts only BuildBanner's contribution.
+2. Restores the `<html>` padding with subtract-not-overwrite (see **Push Mode Safety**). If no other tool changed the padding, it restores the original value. If another tool added padding after init, it subtracts only BuildBanner's padding.
 3. Clears all polling timers.
 4. Removes the `visibilitychange` event listener.
-5. Marks the instance as destroyed — all methods on `window.BuildBanner` become no-ops. The global is **not deleted**, so existing references don't throw.
+5. Marks the instance as destroyed: every method on `window.BuildBanner` then does nothing. The global is **not deleted**, so code that holds a reference does not throw.
 
-After `destroy()`, a new active instance can be created by calling `BuildBanner.init()`.
+After `destroy()`, calling `BuildBanner.init()` creates a new active instance.
 
 ### Framework Integration
 
@@ -766,7 +766,7 @@ HEAD (detached, no tag)                            → null
 
 ### Cross-Language Parity
 
-Shared `test_fixtures.json` loaded by all three language test suites. Same inputs, same expected outputs.
+The test suites of all three languages load the shared `test_fixtures.json`, so they share the inputs and the expected outputs.
 
 ---
 
@@ -846,7 +846,7 @@ buildbanner/
 - PR detection from branch names
 - WebSocket push
 - Full auth/RBAC on endpoint
-- Framework wrappers (React/Vue) — but `destroy()` enables clean integration (see examples above)
+- Framework wrappers (React/Vue) — `destroy()` lets an app integrate without them (see the examples above)
 - Nested/typed `custom` values (planned v2)
 - `links` array for arbitrary clickable links — Sentry, Datadog, Jira, internal docs (planned v2, schema: `[{"label": "Sentry", "url": "https://...", "icon": "error_log"}]`)
 - CSS dot indicators replacing emoji (planned v2)
@@ -860,6 +860,6 @@ buildbanner/
 
 1. ~~**Name**~~: → `BuildBanner`. Descriptive, unambiguous about purpose. Package names: `buildbanner` (npm, pip, gem). Endpoint: `/buildbanner.json`.
 2. ~~**Monorepo or multi-repo**~~: → **Monorepo.** Shared test fixtures, shared JSON schema, and client/server helpers must stay in sync on the contract. Publish to npm/pypi/rubygems using changesets or release-please.
-3. ~~**Auto-detect endpoint**~~: → **Yes.** Try `/buildbanner.json`, give up silently on failure. Zero-config is the killer feature.
+3. ~~**Auto-detect endpoint**~~: → **Yes.** Try `/buildbanner.json`, and give up silently on failure. Working with no configuration is the main feature.
 4. ~~**Default poll**~~: → **0** (fetch once). Polling is opt-in for apps with live test/build status.
 5. ~~**License**~~: → MIT

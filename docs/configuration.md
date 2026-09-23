@@ -77,7 +77,7 @@ data-env-hide="production,staging"
 
 - **Default:** `false`
 - **Type:** Boolean
-- **Description:** When `true`, the client writes its diagnostic logs with `console.warn` instead of `console.debug`, so DevTools shows them at its default log level. The logs are always written at the `console.debug` level, whatever this setting is.
+- **Description:** When `true`, the client also writes each diagnostic log with `console.warn`, so DevTools shows it at its default log level. The logs are always written with `console.debug`, whatever this setting is.
 
 ### `data-poll`
 
