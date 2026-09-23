@@ -863,3 +863,104 @@ owner records the decisions here.
 - `make gate` passes.
 
 ---
+
+## Task 64: Stop the Ruby middleware from turning a host-app error into a 200 banner response
+
+**Class:** possible bug
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, "Pass 4: double check" (PR #64), "Findings for the owner (not changed)", 2026-09-24.
+
+**Objective:**
+
+`BuildBanner::Middleware#call` (`ruby/lib/buildbanner.rb:50-63`) passes every request that is not
+a GET on the banner path to the host app: `return @app.call(env) unless _matches_request?(env)`
+(line 51). That line is inside `call`, whose method-level `rescue StandardError` (lines 60-62)
+logs `BuildBanner: request failed: ...` and returns `200 {"_buildbanner":{"version":1}}`. So an
+exception that the host app raises on any path reaches the client as a 200 banner response.
+
+The report verified this on 2026-09-24 with `Rack::MockRequest`: an inner app that raised
+`ArgumentError` on `/some/other/path` got `status=200 body={"_buildbanner":{"version":1}}`, and
+the middleware logged `BuildBanner: request failed: boom from the host app`. In Rails,
+`config.middleware.use` puts the middleware inside the exception handlers, so a controller error
+would reach the browser as a 200. That was not run in Rails.
+
+Checked 2026-09-24 by reading the code: the passthrough specs in
+`ruby/spec/buildbanner_spec.rb:280-292` use an inner app that returns `ok` and never raises, and
+`python/buildbanner/wsgi.py:29` and `node/koa.js:20` call the host app outside their `try`. The
+report did not read the other helpers (`node/index.js`, `node/hono.js`,
+`python/buildbanner/flask.py`, `python/buildbanner/fastapi.py`, `python/buildbanner/django.py`).
+
+**Suggested path:**
+
+Write the failing spec first: an inner app that raises on a path other than the banner path, and
+confirm that the current code returns the 200 fallback. Resolved when that exception reaches the
+caller unchanged, as it does in `wsgi.py` and `koa.js`, and a failure while serving the banner
+path still returns the 200 fallback. Check the other helpers for the same pattern in the same
+change.
+
+**Tests:** `ruby/spec/buildbanner_spec.rb`
+
+- A new spec: an inner app that raises on `/other-path` makes the request raise, not return 200.
+- `make test-ruby` and `make test-parity` pass.
+
+---
+
+## Task 65: Add `data-sha-color` and `data-cache` to the spec table and the `init()` example
+
+**Class:** stale claim
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, "Pass 4: double check" (PR #64), "Findings for the owner (not changed)", 2026-09-24.
+
+**Objective:**
+
+PR #64 added `data-sha-color` and `data-cache` to the attribute list in `docs/configuration.md`,
+which Task 58 asked for. Two other places still omit them:
+
+- The data-attribute table in `buildbanner-design-spec.md` (lines 180-191) has no
+  `data-sha-color` or `data-cache` row. It has no `data-manual` row either; line 196 mentions
+  `data-manual` only in a code comment (checked 2026-09-24 by reading the spec).
+- `docs/configuration.md:120` says "Every data attribute is also an `init()` option", but the
+  `BuildBanner.init({...})` example below it (lines 123-139) has no `shaColor` or `cache` key.
+  `_validateConfig` in `client/src/config.js` validates both keys (lines 112-113).
+
+**Suggested path:**
+
+Add the rows and the keys, with the defaults and values from `DEFAULT_CONFIG` and
+`VALID_SHA_COLOR` in `client/src/config.js`. The spec's statements that contradict the code are
+Task 57's.
+
+**Tests:**
+
+- `make test-js` passes (`tests/docs.test.js` reads the docs). `make doc-refs-check` passes.
+
+---
+
+## Task 66: Correct the "no inline styles" statements in the docs
+
+**Class:** stale claim
+**Source:** prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, "Pass 4: double check" (PR #64), "Findings for the owner (not changed)", 2026-09-24.
+
+**Objective:**
+
+`docs/README.md:255` says "All styles are class-based CSS inside the Shadow DOM. The client sets
+no inline styles." The client sets inline style properties through `element.style`:
+
+- `client/src/push.js` sets the padding property named by `_paddingProperty` (line 27) and
+  `backgroundColor` (line 97) on `<html>`.
+- `client/src/clipboard.js:14-15` sets `position` and `left` on its temporary textarea.
+
+The report named `docs/README.md` only. The same statement is also in `docs/README.md:289`,
+`docs/csp.md:11` and `buildbanner-design-spec.md:553` and `:613` (checked 2026-09-24 by reading
+them). Task 57's list of spec corrections does not include lines 553 and 613. Task 59 covers only
+whether a strict CSP blocks the textarea styles in `clipboard.js`.
+
+**Suggested path:**
+
+Reword each statement to name the elements that get inline style properties. In the design spec,
+strike through the disproved text and add a dated correction. Whether a `style-src` policy blocks
+these properties is Task 59's browser check; state it only after that check. The `tasks.md`
+preamble gives the same rule as a convention; leave it to the owner.
+
+**Tests:**
+
+- `make test-js` passes (`tests/docs.test.js` reads the docs). `make doc-refs-check` passes.
+
+---
