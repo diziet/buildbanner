@@ -3,6 +3,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Collect only the root tests/ directory. The `tests/` filter in `npm test` matches every
+    // path that contains "tests/", so without this list the root run also ran client/tests and
+    // node/tests, which `make test-js` runs with their own configs.
+    include: ['tests/**/*.test.js'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
