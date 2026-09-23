@@ -4,7 +4,7 @@ __version__ = '0.1.0'
 
 
 def __getattr__(name: str):
-    """Lazy import adapters to avoid hard framework dependencies."""
+    """Import an adapter on first use, so that importing buildbanner needs no framework."""
     if name == 'buildbanner_blueprint':
         from buildbanner.flask import buildbanner_blueprint
         return buildbanner_blueprint

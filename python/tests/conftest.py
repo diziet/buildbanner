@@ -65,7 +65,7 @@ def header_to_meta_key(header_name: str) -> str:
 
 
 def reload_adapter(module_name, attr_name, **env_overrides):
-    """Reload core + adapter module and return a specific attribute."""
+    """Reload buildbanner.core and one adapter module, and return one attribute of the adapter."""
     mods = reload_modules('buildbanner.core', module_name, **env_overrides)
     return mods[module_name].__dict__[attr_name]
 

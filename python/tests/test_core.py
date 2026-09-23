@@ -9,7 +9,6 @@ import pytest
 
 from tests.conftest import VALID_TEST_TOKEN, make_git_side_effect, reload_modules
 
-# Fixtures path
 FIXTURES_PATH = os.path.join(
     os.path.dirname(__file__), '..', '..', 'shared', 'test_fixtures.json',
 )
@@ -124,7 +123,7 @@ class TestEnvVarOverrides:
 
         data = core.get_banner_data()
         assert data['sha'] == 'abcdef1'
-        # sha_full retains the git-derived 40-char value
+        # sha_full keeps the 40-character value from git.
         assert len(data['sha_full']) == 40
 
 
@@ -256,13 +255,13 @@ class TestNoGitNoEnv:
         data = core.get_banner_data()
         assert data['_buildbanner'] == {'version': 1}
         assert 'server_started' in data
-        # null fields should be omitted
+        # Null fields are omitted.
         assert data.get('sha') is None or 'sha' not in data
         assert data.get('branch') is None or 'branch' not in data
 
 
 class TestProductionTokenWarning:
-    """Production environment token warning tests."""
+    """Tests for the INFO log about token auth in production."""
 
     def test_production_env_with_token_logs_info(self, caplog):
         """Production env with token logs an info message."""

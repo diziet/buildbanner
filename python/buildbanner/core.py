@@ -1,4 +1,4 @@
-"""BuildBanner core — git info extraction and JSON response builder."""
+"""Read the git information and build the BuildBanner JSON response for the Python adapters."""
 
 import hmac
 import logging
@@ -67,7 +67,11 @@ def _read_git_info() -> Dict[str, Optional[str]]:
 
 
 def sanitize_repo_url(raw_url: Optional[str]) -> Optional[str]:
-    """Sanitize a repo URL — strip userinfo, .git suffix, convert SSH."""
+    """Sanitize a repo URL.
+
+    SSH forms become https URLs, and the userinfo, the .git suffix and
+    trailing slashes are removed.
+    """
     if not raw_url:
         return None
 
@@ -144,7 +148,7 @@ def _apply_env_overrides(
 
 
 def _read_env_config() -> Dict[str, Any]:
-    """Snapshot env-based config values at module load time."""
+    """Read the configuration from environment variables once, at module load."""
     port_str = os.environ.get('BUILDBANNER_PORT')
     port = None
     if port_str:
@@ -161,7 +165,7 @@ def _read_env_config() -> Dict[str, Any]:
     }
 
 
-# Module-level cached state — computed once at import time
+# Computed once, at import, and reused for every response.
 _git_info = _read_git_info()
 _static_info = _apply_env_overrides(_git_info)
 _custom_env = _read_custom_env()
@@ -266,7 +270,10 @@ def _build_banner_data(
 
 
 def _warn_production_token() -> None:
-    """Log info if environment is production and token is configured."""
+    """Log at INFO when the environment is production and a token is set.
+
+    Only a token of at least MIN_TOKEN_LEN characters counts.
+    """
     environment = os.environ.get('BUILDBANNER_ENVIRONMENT')
     token = os.environ.get(TOKEN_ENV_VAR)
     if environment == 'production' and token and len(token) >= MIN_TOKEN_LEN:
@@ -275,5 +282,5 @@ def _warn_production_token() -> None:
         )
 
 
-# Emit production token info at module load
+# Runs once, at import.
 _warn_production_token()
