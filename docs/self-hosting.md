@@ -1,6 +1,6 @@
 # Self-Hosting
 
-Serve `buildbanner.min.js` from your own infrastructure instead of a CDN for full control over availability, versioning, and CSP compliance.
+Serve `buildbanner.min.js` from your own servers instead of a CDN. You then control its availability, its version and your CSP.
 
 ## Getting the File
 
@@ -13,11 +13,11 @@ cp node_modules/buildbanner/dist/buildbanner.min.js /path/to/your/static/
 
 ### From the Release
 
-Download `buildbanner.min.js` from the latest GitHub release and place it in your static assets directory.
+Download `buildbanner.min.js` from the latest GitHub release and put it in your static assets directory.
 
 ## Serving
 
-Place `buildbanner.min.js` in your static file directory and reference it in your HTML:
+Put `buildbanner.min.js` in your static file directory and load it from your HTML:
 
 ```html
 <script src="/static/buildbanner.min.js"></script>
@@ -49,7 +49,7 @@ Flask serves static files from the `static/` directory by default:
 
 ### Rails
 
-Place in `public/` or use the asset pipeline:
+Put the file in `public/` or use the asset pipeline:
 
 ```erb
 <%= javascript_include_tag 'buildbanner.min' %>
@@ -57,23 +57,23 @@ Place in `public/` or use the asset pipeline:
 
 ## Versioning
 
-Pin to a specific version to avoid unexpected changes. When updating:
+Pin a specific version, so the banner changes only when you update it. To update:
 
 1. Download the new version
 2. Replace the file in your static directory
-3. Clear CDN/proxy caches if applicable
-4. Verify the banner still renders correctly
+3. Clear CDN and proxy caches, if you use them
+4. Check that the banner still renders
 
 ## CSP Configuration
 
-Self-hosting simplifies CSP — no external domains needed:
+A self-hosted script needs no external domain in the CSP:
 
 ```
 Content-Security-Policy: script-src 'self'; connect-src 'self';
 ```
 
-See [csp.md](csp.md) for detailed CSP guidance.
+See [csp.md](csp.md) for more CSP examples.
 
 ## Size
 
-The client script targets <3KB gzipped. It has zero runtime dependencies and uses only browser APIs.
+The client script's target size is <3KB gzipped. It has no runtime dependencies and uses only browser APIs.

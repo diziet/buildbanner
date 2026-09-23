@@ -1,51 +1,51 @@
 # Security
 
-BuildBanner is a developer tool that exposes git metadata (SHA, branch, repo URL) via a JSON endpoint. This document covers the security implications and recommended controls.
+BuildBanner is a developer tool that exposes git metadata (SHA, branch, repo URL) through a JSON endpoint. This document covers what that exposes and the recommended controls.
 
 ## Token Auth Limitations
 
-`data-token` provides a lightweight shared-secret mechanism. The token is sent as an `Authorization: Bearer <token>` header and validated by server helpers.
+`data-token` is a simple shared secret. The client sends it in an `Authorization: Bearer <token>` header, and the server helpers check it.
 
-**`data-token` is a speed bump, not a security boundary.**
+**`data-token` only slows a visitor down. It is not a security boundary.**
 
-It is intended exclusively for:
+It is meant only for:
 
 - `localhost` development
 - Internal network / VPN-only staging
 - Environments where the HTML source is not publicly accessible
 
-It is **not safe** for production or any environment where page source is viewable:
+It is **not safe** in production or in any environment where users can view the page source:
 
-- The token is visible in HTML source (View Source, browser extensions, CSP reports)
-- Any user with page access can extract it
-- It cannot be rotated without redeploying all clients
+- The token is visible in the HTML source (View Source, browser extensions, CSP reports)
+- Any user who can load the page can read it
+- Changing it means redeploying every client
 
 ### Client-Side Warnings
 
-The client enforces two warnings at initialization:
+The client logs two warnings at initialization:
 
-1. **Short token warning**: If `data-token` is shorter than 16 characters, a `console.warn` is logged.
-2. **Public hostname warning**: If the page is served over HTTPS on a non-local hostname, a `console.warn` is logged indicating token auth is intended for staging/internal use only.
+1. **Short token warning**: if `data-token` is shorter than 16 characters, the client logs a `console.warn`.
+2. **Public hostname warning**: if the page is served over HTTPS on a non-local hostname, the client logs a `console.warn` that says token auth is meant only for staging and internal use.
 
 ## Network-Level Controls (Recommended)
 
-For any environment beyond localhost, restrict access to `/buildbanner.json` at the network level:
+In any environment other than localhost, restrict access to `/buildbanner.json` at the network level:
 
-- **Reverse proxy auth** — require authentication at the proxy layer (nginx, Caddy, Traefik)
-- **IP allowlisting** — restrict the endpoint to known IP ranges or VPN addresses
-- **VPN-only access** — ensure staging environments are not publicly reachable
+- **Reverse proxy auth** — require authentication at the proxy (nginx, Caddy, Traefik)
+- **IP allowlisting** — allow the endpoint only from known IP ranges or VPN addresses
+- **VPN-only access** — keep staging environments off the public internet
 
 **Network-level controls are the recommended primary defense.** Token auth and `data-env-hide` are secondary layers.
 
 ## `data-env-hide`
 
-Set `data-env-hide="production,staging"` to suppress banner rendering when the server's `environment` field matches a listed value.
+Set `data-env-hide="production,staging"` so that the banner does not render when the server's `environment` field matches a listed value.
 
-**Important:** `data-env-hide` suppresses rendering, not the network request. The client still fetches `/buildbanner.json` to learn the environment value. If the endpoint itself should not be accessible, use network-level controls or remove the server middleware entirely.
+`data-env-hide` stops the rendering, not the network request. The client still fetches `/buildbanner.json` to read the environment value. If the endpoint itself must not be reachable, use network-level controls or remove the server middleware.
 
 ## Endpoint Renaming
 
-The default endpoint `/buildbanner.json` is intentionally predictable for zero-config setup. For shared or semi-public environments, rename the endpoint to reduce discoverability by automated scanners:
+The default endpoint, `/buildbanner.json`, is predictable on purpose, so the banner works with no configuration. In a shared or semi-public environment, rename the endpoint so that automated scanners are less likely to find it:
 
 ```html
 <script src="buildbanner.min.js" data-endpoint="/_internal/build_9f3a2.json"></script>
@@ -63,11 +63,11 @@ app.register_blueprint(buildbanner_blueprint(path='/_internal/build_9f3a2.json')
 app.use(buildBannerMiddleware({ path: '/_internal/build_9f3a2.json' }));
 ```
 
-This is not security through obscurity — it is a practical measure to avoid triggering automated scanners and satisfying organizational policies that prohibit well-known info endpoints.
+Renaming is not meant as security. It keeps automated scanners from flagging the endpoint, and it satisfies organizational policies that forbid well-known info endpoints.
 
 ## Same-Origin Policy
 
-By default, the client fetches from the same origin. Server helpers do not set CORS headers, so cross-origin requests fail silently. This prevents external sites from reading your build metadata.
+By default, the client fetches from the same origin. Server helpers set no CORS headers, so cross-origin requests fail silently. Other sites therefore cannot read your build metadata.
 
 ## Recommended Security Posture
 
@@ -83,7 +83,7 @@ By default, the client fetches from the same origin. Server helpers do not set C
 ## What BuildBanner Does NOT Do
 
 - Does not expose source code, only commit metadata
-- Does not execute any server-supplied code
-- Does not use `innerHTML` — all content is set via `textContent` / `createElement` (XSS safe)
-- Does not log or transmit data to third parties
-- Does not store any data beyond dismiss state (sessionStorage/localStorage)
+- Does not execute code that the server sends
+- Does not use `innerHTML` — all content is set with `textContent` / `createElement` (XSS safe)
+- Does not log or send data to third parties
+- ~~Does not store any data beyond dismiss state (sessionStorage/localStorage)~~ Corrected 2026-09-24: since Task 50 (`cb0bcc2`, 2026-03-24), the client also stores the last banner response and theme for each endpoint in localStorage, under `buildbanner_cache:<endpoint>`, and ignores an entry older than 24 hours (`client/src/cache.js`). The dismiss state is stored as before, in sessionStorage or localStorage.

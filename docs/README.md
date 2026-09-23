@@ -1,6 +1,6 @@
 # BuildBanner
 
-A crash-proof, language-agnostic developer info banner for web apps. Drop a `<script>` tag into any app, point it at a JSON endpoint, get a GitHub-linked admin strip showing git SHA, branch, uptime, build status, and custom fields.
+BuildBanner is a developer info banner for web apps. Add a `<script>` tag to any app and point it at a JSON endpoint. The banner is a thin strip that shows the git SHA, branch, uptime, build status and custom fields, with links to GitHub. The server can be written in any language, and the client never throws an error into the host app.
 
 ```
 +-------------------------------------------------------------------------+
@@ -16,16 +16,16 @@ A crash-proof, language-agnostic developer info banner for web apps. Drop a `<sc
 
 ## Quick Start
 
-Zero configuration if your server exposes `/buildbanner.json`. Copy `buildbanner.min.js` into your static assets directory and add the script tag:
+If your server serves `/buildbanner.json`, no configuration is needed. Copy `buildbanner.min.js` to your static assets directory and add the script tag:
 
 ```html
 <script src="/static/buildbanner.min.js"></script>
 <!-- That's it. Banner appears if endpoint responds. -->
 ```
 
-See [docs/self-hosting.md](self-hosting.md) for detailed setup instructions.
+See [docs/self-hosting.md](self-hosting.md) for the setup steps.
 
-Or install via npm (from GitHub):
+Or install it with npm from GitHub:
 
 ```bash
 npm install github:diziet/buildbanner
@@ -37,7 +37,7 @@ import 'buildbanner';
 
 ## Configuration
 
-All configuration is done via `data-*` attributes on the script tag. For example:
+All configuration is set with `data-*` attributes on the script tag. For example:
 
 ```html
 <script
@@ -54,7 +54,7 @@ For the full list of attributes and their defaults, see [docs/configuration.md](
 
 ## Programmatic API
 
-When using `data-manual` or importing as an ES module:
+With `data-manual`, or when you import the client as an ES module:
 
 ```js
 // Initialize with options (hostPatterns for self-hosted git)
@@ -84,7 +84,7 @@ BuildBanner.isVisible(); // boolean
 
 ### `hostPatterns` Option
 
-For self-hosted Git instances (GitLab, Gitea, etc.), pass `hostPatterns` to `init()` to enable commit/branch link generation:
+For a self-hosted Git server, such as GitLab or Gitea, pass `hostPatterns` to `init()` so that the banner links the commit and the branch:
 
 ```js
 BuildBanner.init({
@@ -95,11 +95,11 @@ BuildBanner.init({
 });
 ```
 
-Without this, SHA and branch are rendered as plain text for unrecognized hosts.
+Without `hostPatterns`, the SHA and branch of an unrecognized host render as plain text.
 
 ## Environment Variables
 
-Server helpers read `BUILDBANNER_*` environment variables at startup, checked before git fallback. Any `BUILDBANNER_CUSTOM_*` variable becomes a `custom` field (suffix lowercased to form the key, e.g. `BUILDBANNER_CUSTOM_REGION=us-east-1` becomes `custom.region`).
+Server helpers read the `BUILDBANNER_*` environment variables at startup. A variable that is set wins over the value from git. Each `BUILDBANNER_CUSTOM_*` variable becomes a `custom` field whose key is the lowercased suffix: `BUILDBANNER_CUSTOM_REGION=us-east-1` becomes `custom.region`.
 
 For the full environment variable reference, see [docs/configuration.md](configuration.md#server-side-environment-variables).
 
@@ -115,7 +115,7 @@ Install the server helper for your language:
 
 ## Server Helpers
 
-BuildBanner provides one-liner middleware for popular frameworks. Each helper reads git info once at startup and caches it in memory. See [installation](#server-helper-installation) for setup.
+BuildBanner has one-line middleware for the frameworks below. Each helper reads the git information once at startup and caches it in memory. See [installation](#server-helper-installation) for setup.
 
 ### Flask
 
@@ -201,11 +201,11 @@ config.middleware.use BuildBanner::Middleware,
 
 ### Static / nginx
 
-For static sites, serve a hand-crafted `buildbanner.json` file and include the client script. See the [static/nginx example](../examples/static-html/) for a complete Dockerfile and nginx configuration.
+For a static site, serve a `buildbanner.json` file that you write, and include the client script. The [static/nginx example](../examples/static-html/) has a complete Dockerfile and nginx configuration.
 
 ## JSON Contract
 
-The server endpoint (`GET /buildbanner.json`) returns a JSON object. Server helpers include `_buildbanner`, `sha`, `sha_full`, `branch`, and `server_started` in every response. The client requires only `sha` and `branch`; all other fields are optional and the client renders whatever is present.
+The server endpoint (`GET /buildbanner.json`) returns a JSON object. Server helpers include `_buildbanner`, `sha`, `sha_full`, `branch`, and `server_started` in every response. The client requires only `sha` and `branch`. Every other field is optional, and the client renders the fields that are present.
 
 ```json
 {
@@ -229,11 +229,11 @@ Full schema: [`shared/schema.json`](../shared/schema.json)
 
 ### Custom Fields
 
-The `custom` object is a flat string-to-string map. Each key-value pair renders as a labeled segment in the banner, sorted alphabetically by key. Server helpers automatically stringify non-string values. Use `BUILDBANNER_CUSTOM_*` env vars or the `extras` callback to populate custom fields.
+The `custom` object is a flat map from string to string. Each key-value pair renders as a labeled segment in the banner, in alphabetical order of key. Server helpers convert non-string values to strings. Set custom fields with `BUILDBANNER_CUSTOM_*` environment variables or the `extras` callback.
 
 ## Status Indicators
 
-The `tests` and `build` fields drive colored status dots in the banner:
+The `tests` and `build` fields set the color of a status dot in the banner:
 
 | Status | Indicator |
 |--------|-----------|
@@ -242,64 +242,64 @@ The `tests` and `build` fields drive colored status dots in the banner:
 | `running` / `building` | Yellow |
 | `idle` / unknown | Gray |
 
-If `tests.url` or `build.url` is provided, the status segment becomes a clickable link.
+When `tests.url` or `build.url` is set, the status segment is a link.
 
 ## Theming
 
-Three themes are available via `data-theme`:
+`data-theme` selects one of three themes:
 
 - **`dark`** (default) — dark background, light text
 - **`light`** — light background, dark text
 - **`auto`** — follows the user's `prefers-color-scheme` setting
 
-All styling is class-based CSS inside Shadow DOM. No inline styles are used.
+All styles are class-based CSS inside the Shadow DOM. The client sets no inline styles.
 
 ## Dismiss Behavior
 
-The dismiss button (x) behavior is controlled by `data-dismiss`:
+`data-dismiss` sets what the dismiss button (x) does:
 
 - **`session`** (default) — dismissal persists for the browser session (sessionStorage)
 - **`permanent`** — dismissal persists across sessions (localStorage)
 - **`none`** — no dismiss button is shown
 
-After `BuildBanner.destroy()`, dismiss state is reset.
+`BuildBanner.destroy()` resets the dismiss state.
 
 ## Push Mode
 
-By default (`data-push="true"`), the banner adds `padding-top` to `<html>` to push app content down, preventing the banner from overlaying content.
+By default (`data-push="true"`), the banner adds `padding-top` to `<html>`. That moves the app content down, so the banner does not cover it.
 
-If `<html>` already has non-zero padding (set by a CSS framework or another tool), push mode automatically falls back to overlay mode to avoid layout conflicts.
+If `<html>` already has a non-zero padding, set by a CSS framework or another tool, push mode falls back to overlay mode to avoid a layout conflict.
 
-On destroy, padding is restored using a subtract-not-overwrite strategy that preserves padding added by other tools (cookie banners, etc.) after BuildBanner initialized.
+On destroy, the client subtracts its own padding instead of writing back the old value. Padding that another tool, such as a cookie banner, added after BuildBanner initialized stays in place.
 
 ## Polling
 
-Set `data-poll="30"` to re-fetch the endpoint every 30 seconds. Polling is visibility-aware — it pauses when the tab is backgrounded and resumes with an immediate fetch when the tab regains focus.
+Set `data-poll="30"` to fetch the endpoint again every 30 seconds. Polling pauses while the tab is in the background. When the tab regains focus, the client fetches at once and polling resumes.
 
-On consecutive fetch failures, the interval backs off exponentially (doubles each failure, caps at 5 minutes) and resets on the next success.
+After consecutive fetch failures, the interval doubles with each failure, up to 5 minutes. The next success resets it.
 
 ## Size Budget
 
-The client library targets **<3KB gzipped**. Zero dependencies, browser APIs only.
+The client library's target size is **<3KB gzipped**. It has no dependencies and uses only browser APIs.
 
 ## CSP Compatibility
 
 BuildBanner works under strict Content Security Policies:
 
 - No `eval()`, no `innerHTML`, no inline styles, no inline scripts
-- Shadow DOM styles require no additional CSP directives
-- Non-Shadow-DOM fallback injects a `<style>` tag (may require `style-src 'self'`)
+- Shadow DOM styles need no extra CSP directive
+- Without Shadow DOM, the fallback adds a `<style>` tag, which may require `style-src 'self'`
 
-For detailed CSP header examples, see [docs/csp.md](csp.md).
+For CSP header examples, see [docs/csp.md](csp.md).
 
 ## Security
 
-The `/buildbanner.json` endpoint exposes git metadata that may be sensitive. Defense layers include:
+The `/buildbanner.json` endpoint exposes git metadata, which may be sensitive. The layers of defense include:
 
-- `data-env-hide` to suppress rendering in specific environments
-- `data-token` for lightweight access control (not a security boundary)
-- Same-origin fetch by default
-- Endpoint renaming for reduced discoverability
-- Network-level controls (recommended primary defense)
+- `data-env-hide`, which stops rendering in the environments it lists
+- `data-token`, a simple access control that is not a security boundary
+- A same-origin fetch by default
+- A renamed endpoint, which is harder to find
+- Network-level controls, the recommended primary defense
 
 For the full security posture, see [docs/security.md](security.md).
