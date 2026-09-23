@@ -1,23 +1,29 @@
 /** Build output validation tests for BuildBanner client. */
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
-import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 import { createRequire } from "node:module";
+import { buildToTempDir, removeBuildDir } from "./build-output.js";
 
 const require = createRequire(import.meta.url);
 const { BUDGET_BYTES, getGzippedSize } = require("../scripts/size-budget.js");
 
-const DIST_DIR = resolve(import.meta.dirname, "..", "dist");
-const MIN_PATH = resolve(DIST_DIR, "buildbanner.min.js");
 const SRC_PATH = resolve(import.meta.dirname, "..", "buildbanner.js");
 
+let outDir;
+let MIN_PATH;
+
 beforeAll(() => {
-  execSync("npm run build", { cwd: resolve(import.meta.dirname, "..") });
+  outDir = buildToTempDir();
+  MIN_PATH = resolve(outDir, "buildbanner.min.js");
+});
+
+afterAll(() => {
+  removeBuildDir(outDir);
 });
 
 describe("build output", () => {
-  it("dist/buildbanner.min.js exists after build", () => {
+  it("buildbanner.min.js exists after build", () => {
     expect(existsSync(MIN_PATH)).toBe(true);
   });
 

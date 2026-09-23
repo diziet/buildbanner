@@ -1,17 +1,17 @@
 /** Bundle output validation tests for BuildBanner client. */
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
-import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 import { createRequire } from "node:module";
+import { buildToTempDir, removeBuildDir } from "./build-output.js";
 
 const require = createRequire(import.meta.url);
 const { BUDGET_BYTES, getGzippedSize } = require("../scripts/size-budget.js");
 
-const DIST_DIR = resolve(import.meta.dirname, "..", "dist");
-const MIN_PATH = resolve(DIST_DIR, "buildbanner.min.js");
-const UNMIN_PATH = resolve(DIST_DIR, "buildbanner.js");
-const CSS_PATH = resolve(DIST_DIR, "buildbanner.css");
+let outDir;
+let MIN_PATH;
+let UNMIN_PATH;
+let CSS_PATH;
 
 /** Evaluate the minified bundle in a fake browser environment. */
 function evaluateBundle() {
@@ -28,7 +28,14 @@ function evaluateBundle() {
 }
 
 beforeAll(() => {
-  execSync("npm run build", { cwd: resolve(import.meta.dirname, "..") });
+  outDir = buildToTempDir();
+  MIN_PATH = resolve(outDir, "buildbanner.min.js");
+  UNMIN_PATH = resolve(outDir, "buildbanner.js");
+  CSS_PATH = resolve(outDir, "buildbanner.css");
+});
+
+afterAll(() => {
+  removeBuildDir(outDir);
 });
 
 describe("bundle output", () => {
