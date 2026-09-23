@@ -1,0 +1,27 @@
+# Exemptions for scripts/check_doc_refs.py (make doc-refs-check).
+#
+# One per line: <doc glob> | <reference glob> | <reason>
+# The reference is the text a failure prints between backticks. Globs use fnmatch,
+# where `*` also matches `/`. Every entry must still match a finding, or the check
+# fails and asks for the entry to be removed. Only these kinds of reference are
+# exempt: generated or per-run files, branch names, paths outside this repo,
+# flags of other programs, and historical documents.
+
+# A file an app serves at run time; examples/static-html/entrypoint.sh writes it
+# when the container starts.
+* | buildbanner.json | the endpoint file an app serves; written at run time, not tracked
+
+# Paths in the user's app, not in this repo.
+docs/self-hosting.md | static/ | Flask's static directory in the user's app
+docs/self-hosting.md | public/ | the Rails public directory in the user's app
+python/README.md | settings.py | the Django settings file in the user's project
+ruby/README.md | config/application.rb | a file in the user's Rails app
+buildbanner-design-spec.md | .git/ | the git directory of a deployed app, which the sentence says may be absent
+
+# Not paths: a URL template and a MIME type.
+buildbanner-design-spec.md | {repo_url}/tree/{branch} | URL template for the branch link
+buildbanner-design-spec.md | application/json | MIME type in the Content-Type header table
+
+# The task list autopilot reads and sends to a model. Each task names files as
+# planned when it was written, and pending tasks name files that do not exist yet.
+tasks.md | * | task list autopilot reads; see the comment above
