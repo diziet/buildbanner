@@ -13,6 +13,9 @@ import {
   throwingCreateBanner,
   withEnvOverrides,
 } from './helpers/fixtures.js';
+import { closeLoopbackServers, serveOnLoopback } from './helpers/serve.js';
+
+afterEach(closeLoopbackServers);
 
 /** Create a Koa app with the middleware and an extra test route. */
 function createApp(options = {}) {
@@ -33,7 +36,7 @@ function createApp(options = {}) {
 describe('Koa middleware — happy path', () => {
   it('returns 200 with valid JSON on default path', async () => {
     const app = createApp();
-    const res = await request(app.callback()).get(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).get(DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     expect(res.body._buildbanner).toEqual({ version: 1 });
@@ -47,14 +50,14 @@ describe('Koa middleware — happy path', () => {
 describe('Koa middleware — response headers', () => {
   it('sets Cache-Control: no-store', async () => {
     const app = createApp();
-    const res = await request(app.callback()).get(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).get(DEFAULT_PATH);
 
     expect(res.headers['cache-control']).toBe('no-store');
   });
 
   it('sets Content-Type: application/json', async () => {
     const app = createApp();
-    const res = await request(app.callback()).get(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).get(DEFAULT_PATH);
 
     expect(res.headers['content-type']).toMatch(/application\/json/);
   });
@@ -63,7 +66,7 @@ describe('Koa middleware — response headers', () => {
 describe('Koa middleware — passthrough', () => {
   it('calls next() for non-matching paths', async () => {
     const app = createApp();
-    const res = await request(app.callback()).get('/health');
+    const res = await request(await serveOnLoopback(app.callback())).get('/health');
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ status: 'ok' });
@@ -71,7 +74,7 @@ describe('Koa middleware — passthrough', () => {
 
   it('calls next() for non-GET methods on the banner path', async () => {
     const app = createApp();
-    const res = await request(app.callback()).post(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).post(DEFAULT_PATH);
 
     expect(res.status).not.toBe(200);
   });
@@ -92,7 +95,7 @@ describe('Koa middleware — env var overrides (via core)', () => {
 
     const app = new Koa();
     app.use(buildBannerKoa());
-    const res = await request(app.callback()).get(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).get(DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     expect(res.body.sha).toBe('ff00ff0');
@@ -105,7 +108,7 @@ describe('Koa middleware — extras callback', () => {
     const app = createApp({
       extras: () => ({ uptime: 42 }),
     });
-    const res = await request(app.callback()).get(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).get(DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     expect(res.body.uptime).toBe(42);
@@ -117,7 +120,7 @@ describe('Koa middleware — extras callback', () => {
         throw new Error('boom');
       },
     });
-    const res = await request(app.callback()).get(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).get(DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     expect(res.body._buildbanner).toEqual({ version: 1 });
@@ -142,7 +145,7 @@ describe('Koa middleware — BUILDBANNER_CUSTOM_* env vars', () => {
   it('populates custom map from env vars', async () => {
     const app = new Koa();
     app.use(buildBannerKoa());
-    const res = await request(app.callback()).get(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).get(DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     expect(res.body.custom).toBeDefined();
@@ -154,7 +157,7 @@ describe('Koa middleware — BUILDBANNER_CUSTOM_* env vars', () => {
 describe('Koa middleware — token auth', () => {
   it('returns 401 when token configured and header missing', async () => {
     const app = createApp({ token: FAKE_TOKEN });
-    const res = await request(app.callback()).get(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).get(DEFAULT_PATH);
 
     expect(res.status).toBe(401);
     expect(res.body.error).toBe('Unauthorized');
@@ -162,7 +165,7 @@ describe('Koa middleware — token auth', () => {
 
   it('returns 401 when token configured and header is wrong', async () => {
     const app = createApp({ token: FAKE_TOKEN });
-    const res = await request(app.callback())
+    const res = await request(await serveOnLoopback(app.callback()))
       .get(DEFAULT_PATH)
       .set('Authorization', 'Bearer wrong-token');
 
@@ -171,7 +174,7 @@ describe('Koa middleware — token auth', () => {
 
   it('returns 200 when token configured and header is correct', async () => {
     const app = createApp({ token: FAKE_TOKEN });
-    const res = await request(app.callback())
+    const res = await request(await serveOnLoopback(app.callback()))
       .get(DEFAULT_PATH)
       .set('Authorization', `Bearer ${FAKE_TOKEN}`);
 
@@ -181,7 +184,7 @@ describe('Koa middleware — token auth', () => {
 
   it('returns 200 when no token configured', async () => {
     const app = createApp();
-    const res = await request(app.callback()).get(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).get(DEFAULT_PATH);
 
     expect(res.status).toBe(200);
     expect(res.body._buildbanner).toEqual({ version: 1 });
@@ -192,7 +195,7 @@ describe('Koa middleware — internal error handling', () => {
   it('returns 500 with generic message when getBannerData throws', async () => {
     const app = new Koa();
     app.use(buildBannerKoa({ _createBanner: throwingCreateBanner() }));
-    const res = await request(app.callback()).get(DEFAULT_PATH);
+    const res = await request(await serveOnLoopback(app.callback())).get(DEFAULT_PATH);
 
     expect(res.status).toBe(500);
     expect(res.body.error).toBe('Internal server error');
