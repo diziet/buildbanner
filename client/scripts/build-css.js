@@ -1,4 +1,4 @@
-/** Generate dist/buildbanner.css — fallback stylesheet for non-Shadow-DOM environments. */
+/** Generate buildbanner.css — fallback stylesheet for non-Shadow-DOM environments. */
 const { writeFileSync, mkdirSync } = require("node:fs");
 const { resolve } = require("node:path");
 
@@ -63,7 +63,15 @@ const css = `/* BuildBanner fallback stylesheet for non-Shadow-DOM environments.
 }
 `;
 
-const distDir = resolve(__dirname, "..", "dist");
-mkdirSync(distDir, { recursive: true });
-writeFileSync(resolve(distDir, "buildbanner.css"), css);
-console.log("OK: dist/buildbanner.css generated");
+/** Write buildbanner.css into outDir, creating the directory if needed. */
+function writeFallbackCss(outDir) {
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(resolve(outDir, "buildbanner.css"), css);
+}
+
+module.exports = { writeFallbackCss };
+
+if (require.main === module) {
+  writeFallbackCss(resolve(__dirname, "..", "dist"));
+  console.log("OK: dist/buildbanner.css generated");
+}

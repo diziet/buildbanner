@@ -936,16 +936,18 @@
     const prop = _paddingProperty(config);
     const existing = _readPadding(prop);
     if (!config.push) {
-      return { mode: "overlay", originalPadding: existing };
+      return { mode: "overlay", originalPadding: existing, originalBg: "" };
     }
     if (existing !== 0) {
       if (logger) {
         logger.log("Push mode fell back to overlay due to existing padding");
       }
-      return { mode: "overlay", originalPadding: existing };
+      return { mode: "overlay", originalPadding: existing, originalBg: "" };
     }
+    const originalBg = document.documentElement.style.backgroundColor || "";
     document.documentElement.style[prop] = `${bannerHeight}px`;
-    return { mode: "push", originalPadding: 0 };
+    _matchRootBackground(logger);
+    return { mode: "push", originalPadding: 0, originalBg };
   }
   function removePush(bannerHeight, pushState, config) {
     if (!pushState || pushState.mode !== "push") return;
@@ -958,6 +960,7 @@
       const restored = Math.max(0, current - bannerHeight);
       document.documentElement.style[prop] = restored ? `${restored}px` : "";
     }
+    document.documentElement.style.backgroundColor = pushState.originalBg || "";
   }
   function resolvePositionMode(pushMode) {
     return pushMode === "push" ? "sticky" : "fixed";
@@ -968,6 +971,24 @@
   function _readPadding(prop) {
     const raw = getComputedStyle(document.documentElement)[prop];
     return parseInt(raw, 10) || 0;
+  }
+  function _matchRootBackground(logger) {
+    if (!document.body) return;
+    const bodyBg = getComputedStyle(document.body).backgroundColor;
+    if (!bodyBg || _isTransparent(bodyBg)) return;
+    const htmlBg = getComputedStyle(document.documentElement).backgroundColor;
+    if (!_isTransparent(htmlBg)) return;
+    document.documentElement.style.backgroundColor = bodyBg;
+    if (logger) {
+      logger.log(`Matched <html> background to <body>: ${bodyBg}`);
+    }
+  }
+  function _isTransparent(color) {
+    if (!color) return true;
+    const lower = color.toLowerCase().replace(/\s/g, "");
+    if (lower === "transparent") return true;
+    if (lower === "rgba(0,0,0,0)") return true;
+    return false;
   }
 
   // src/env-hide.js
@@ -1091,6 +1112,9 @@
     } catch (e) {
       return null;
     }
+  }
+  function hasCacheEntry(endpoint) {
+    return readCache(endpoint) !== null;
   }
   function writeCache(endpoint, data, theme) {
     if (!_isStorageAvailable()) return;
@@ -1415,23 +1439,36 @@
   function _restoreMethods() {
     Object.assign(BuildBanner, ORIGINAL_METHODS);
   }
-  function _autoInit() {
+  function _findScriptEl() {
     const scripts = document.querySelectorAll("script[src]");
-    let scriptEl = null;
     for (const s of scripts) {
       if (s.src && s.src.includes("buildbanner")) {
-        scriptEl = s;
-        break;
+        return s;
       }
     }
+    return null;
+  }
+  function _autoInit() {
+    const scriptEl = _findScriptEl();
     if (!scriptEl) return;
     if (scriptEl.dataset.manual !== void 0) return;
     const config = parseConfig(scriptEl);
     init(config).catch(() => {
     });
   }
+  function _hasCachedData(scriptEl) {
+    if (!scriptEl) return false;
+    if (scriptEl.dataset.manual !== void 0) return false;
+    if (scriptEl.getAttribute("data-cache") !== "true") return false;
+    const endpoint = scriptEl.getAttribute("data-endpoint");
+    if (!endpoint) return false;
+    return hasCacheEntry(endpoint);
+  }
   if (typeof document !== "undefined") {
-    if (document.readyState === "loading") {
+    const _scriptEl = _findScriptEl();
+    if (document.body && _hasCachedData(_scriptEl)) {
+      _autoInit();
+    } else if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", _autoInit);
     } else {
       _autoInit();
