@@ -103,6 +103,18 @@ data-env-hide="production,staging"
 - **Type:** Presence attribute (no value needed)
 - **Description:** When the attribute is present, the client does not initialize itself. Call `BuildBanner.init()` to start the banner.
 
+### `data-sha-color`
+
+- **Default:** `auto`
+- **Values:** `auto`, `off`
+- **Description:** With `auto`, the background color of the SHA segment is computed from the first 6 hex digits of the commit SHA and adjusted for the theme. `off` turns the color off.
+
+### `data-cache`
+
+- **Default:** `false`
+- **Type:** Boolean
+- **Description:** When `true`, the client stores the last banner response for each endpoint in localStorage. On a later page load, it renders the banner from a stored entry that has not expired, then fetches the endpoint in the background. See [security.md](security.md) for the storage key and the expiry.
+
 ## Programmatic Options
 
 Every data attribute is also an `init()` option, and some options exist only in `init()`:

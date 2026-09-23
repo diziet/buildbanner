@@ -22,7 +22,7 @@ function _isStorageAvailable() {
 
 /**
  * True when the entry is for this endpoint, has the expected fields, and is at most
- * CACHE_MAX_AGE_MS old.
+ * CACHE_MAX_AGE_MS old. A timestamp in the future also makes it invalid.
  */
 function _isValidCache(entry, endpoint) {
   if (!entry || typeof entry !== "object") return false;
