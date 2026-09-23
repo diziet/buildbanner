@@ -67,7 +67,7 @@ Browser                          Server (any language)
 
 ### Endpoint: `GET /buildbanner.json`
 
-The client and the server can both change the path. The response:
+The path can be set on both the client and the server. The response:
 
 ```jsonc
 {
@@ -332,7 +332,7 @@ It is **not safe** in production or in any environment where users can view the 
 
 **The primary defense should always be network-level controls**: reverse-proxy auth, IP allowlisting, or VPN. Token auth is a secondary "are you sure?" check.
 
-### Client-Side Guardrails
+### Client-Side Warnings
 
 The client logs two warnings at initialization:
 
@@ -340,7 +340,7 @@ The client logs two warnings at initialization:
 
 2. **Public hostname warning**: If the page is served over HTTPS on a hostname that does not match `localhost`, `127.0.0.1`, `*.local`, `*.internal`, or `*.test`, the client logs a `console.warn`: `"Token auth detected on a public-facing origin. data-token is intended for staging/internal use only."` The check is a heuristic and blocks nothing.
 
-### Server-Side Guardrails
+### Server-Side Checks
 
 Server helpers should:
 
@@ -647,9 +647,9 @@ The order cannot be changed in v1. A fixed order keeps segments from moving when
 
 ## Size Budget
 
-### Target: <3KB gzipped
+### Target: ~~<3KB gzipped~~ (corrected 2026-09-24; see below)
 
-The client library's target is <3KB gzipped. The budget is tight for the feature set (Shadow DOM, polling, backoff, clipboard fallback, push mode, CSP safety, diagnostic logging, visibility API), but it can be met if each feature is implemented with care for size.
+The client library's target is ~~<3KB gzipped~~. The budget is tight for the feature set (Shadow DOM, polling, backoff, clipboard fallback, push mode, CSP safety, diagnostic logging, visibility API), but it can be met if each feature is implemented with care for size. Corrected 2026-09-24: `client/dist/buildbanner.min.js` measured 8,488 bytes gzipped, under the 8,500-byte `BUDGET_BYTES` in `client/scripts/size-budget.js`.
 
 ### Enforcement
 
@@ -661,7 +661,7 @@ The client library's target is <3KB gzipped. The budget is tight for the feature
 
 - **v1 feature freeze**: no new client features after v1.0 ships. Bug fixes only.
 - **Size regression policy**: any PR that increases the gzipped size by >100 bytes needs a stated reason and sign-off.
-- **Why the number matters**: "<3KB" is the main reason to add the script without a second thought. If the size grows unnoticed, the project loses that reason.
+- **Why the number matters**: ~~"<3KB"~~ is the main reason to add the script without a second thought. If the size grows unnoticed, the project loses that reason. Corrected 2026-09-24: `client/dist/buildbanner.min.js` measured 8,488 bytes gzipped (see **Target** under **Size Budget**).
 
 ---
 
@@ -808,6 +808,8 @@ buildbanner/
 └── LICENSE                    # MIT
 ```
 
+Corrected 2026-09-24: the "<3KB gzipped" comment on `buildbanner.min.js` in this tree is out of date. `client/dist/buildbanner.min.js` measured 8,488 bytes gzipped (see **Target** under **Size Budget**).
+
 ---
 
 ## Scope: v1.0
@@ -831,7 +833,7 @@ buildbanner/
 - Cross-language test fixtures (URL sanitization, branch detection for detached HEAD)
 - Dark/light/auto theme
 - `data-env-hide` for production
-- Lightweight `data-token` auth (Bearer header) **with client and server guardrails**
+- Lightweight `data-token` auth (Bearer header) **with client-side warnings and server-side checks**
 - CSP compatibility documentation
 - Security posture documentation
 - **Singleton guard for multi-instance safety**
@@ -839,7 +841,7 @@ buildbanner/
 - **`BuildBanner.refresh()` for manual re-fetch**
 - **Accessibility: role="status", aria-live, keyboard navigation, focus-visible**
 - **Two-tier diagnostic logging (console.debug always, console.warn opt-in)**
-- **CI size budget enforcement (<3KB gzipped)**
+- **CI size budget enforcement (~~<3KB gzipped~~)**. Corrected 2026-09-24: `client/dist/buildbanner.min.js` measured 8,488 bytes gzipped (see **Target** under **Size Budget**).
 - **Configurable endpoint path with discoverability guidance**
 
 ### Out (v1.0)
