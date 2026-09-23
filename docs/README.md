@@ -280,7 +280,7 @@ After consecutive fetch failures, the interval doubles with each failure, up to 
 
 ## Size Budget
 
-The client library's target size is **<3KB gzipped**. It has no dependencies and uses only browser APIs.
+~~The client library's target size is **<3KB gzipped**.~~ Corrected 2026-09-24: `client/scripts/size-budget.js` sets the budget to 8,500 bytes gzipped. It was 3,072 bytes until Task 11 (`302048d`, 2026-03-07) raised it, and later tasks raised it further. `client/dist/buildbanner.min.js` measured 8,488 bytes gzipped on 2026-09-24. The client has no dependencies and uses only browser APIs.
 
 ## CSP Compatibility
 
