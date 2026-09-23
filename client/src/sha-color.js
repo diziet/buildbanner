@@ -1,4 +1,4 @@
-/** SHA-based color derivation for visually distinct deploy identification. */
+/** Derive a color from the commit SHA, so each deploy looks different. */
 
 const MIN_LUMINANCE_DARK = 0.4;
 const MAX_LUMINANCE_LIGHT = 0.5;
@@ -51,10 +51,11 @@ function _toHex(r, g, b) {
 }
 
 /**
- * Derive a background color from a commit SHA.
- * Returns null if sha is null, not a string, or shorter than 6 hex characters.
- * @param {*} sha - The commit SHA (returns null if invalid or too short).
- * @param {"dark"|"light"} theme - Current banner theme for readability adjustment.
+ * Derive a background color from the first 6 characters of a commit SHA.
+ * Returns null when sha is not a string, is shorter than 6 characters, or does
+ * not start with 6 hex digits.
+ * @param {*} sha - The commit SHA.
+ * @param {"dark"|"light"} theme - The banner theme; the color is adjusted to stay readable on it.
  * @returns {string|null} Hex color string or null.
  */
 export function getShaColor(sha, theme = "dark") {

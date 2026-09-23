@@ -1,14 +1,14 @@
-/** Diagnostic logging module for BuildBanner. */
+/** Diagnostic logger: console.debug always, and console.warn too when data-debug is set. */
 
-/** Maximum log calls per logger instance before silently dropping. */
+/** Messages one logger writes; it drops later messages without output. */
 export const LOG_CAP = 20;
 
 const PREFIX = "[BuildBanner] ";
 
 /**
- * Create a logger instance. Always emits console.debug; when debug mode
- * is active (data-debug="true"), also promotes messages to console.warn.
- * @param {boolean} debugEnabled - Maps to config.debug (data-debug attr).
+ * Create a logger. It always writes with console.debug and, when
+ * data-debug="true", also with console.warn.
+ * @param {boolean} debugEnabled - config.debug, from the data-debug attribute.
  * @returns {{ log: (message: string) => void }}
  */
 export function createLogger(debugEnabled) {
