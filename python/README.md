@@ -1,6 +1,6 @@
 # BuildBanner — Python Server Helpers
 
-Drop-in server helpers that serve a `/buildbanner.json` endpoint with git info, deploy metadata, and custom fields. Works with Flask, FastAPI, Django, and any WSGI app.
+Server helpers that serve a `/buildbanner.json` endpoint with the git information, deploy metadata and custom fields. They work with Flask, FastAPI, Django and any WSGI app.
 
 ## Installation
 
@@ -20,7 +20,9 @@ app = Flask(__name__)
 app.register_blueprint(buildbanner_blueprint)
 ```
 
-The blueprint registers a `GET /buildbanner.json` route automatically.
+The blueprint registers a `GET /buildbanner.json` route.
+
+Corrected 2026-09-24: `buildbanner_blueprint` is a function that returns the blueprint, so the call is `app.register_blueprint(buildbanner_blueprint())`, as in [docs/README.md](../docs/README.md). With Flask 3.1.3, the line above raises `AttributeError: 'function' object has no attribute 'register'`.
 
 ### FastAPI
 
@@ -34,7 +36,7 @@ app.add_middleware(BuildBannerMiddleware)
 
 ### Django
 
-Add the middleware to your `MIDDLEWARE` list in `settings.py`:
+Add the middleware to the `MIDDLEWARE` list in `settings.py`:
 
 ```python
 MIDDLEWARE = [
@@ -44,7 +46,7 @@ MIDDLEWARE = [
 ]
 ```
 
-Or import via the top-level package:
+Or import it from the top-level package:
 
 ```python
 from buildbanner import DjangoBuildBannerMiddleware
@@ -62,7 +64,7 @@ app = buildbanner_wsgi(your_wsgi_app)
 
 ## Environment Variables
 
-See [shared/env-vars.md](../shared/env-vars.md) for the full list of supported environment variables.
+See [shared/env-vars.md](../shared/env-vars.md) for ~~the full list of~~ the supported environment variables. Corrected 2026-09-24: that table omits `BUILDBANNER_PORT`, which these helpers also read (`buildbanner/core.py`). [docs/configuration.md](../docs/configuration.md#server-side-environment-variables) lists every variable.
 
 ## License
 

@@ -2,7 +2,7 @@
 
 ## What is "parity"?
 
-These tests enforce that all three server helper implementations (Node, Python, Ruby) produce **identical JSON output** given the same input. "Same input" means:
+These tests check that the three server helpers (Node, Python, Ruby) produce **identical JSON output** for the same input. "Same input" means:
 
 - The same `shared/test_fixtures.json` fixture data
 - The same mocked git subprocess responses
@@ -12,7 +12,7 @@ These tests enforce that all three server helper implementations (Node, Python, 
 
 - Identical `repo_url` values for all URL sanitization cases
 - Identical `branch` values for all branch detection cases
-- Identical custom field stringification (integers become strings, nulls are omitted)
+- Identical conversion of custom fields to strings (integers become strings, nulls are omitted)
 - `_buildbanner.version` is always `1`
 - Both `sha` (7 chars) and `sha_full` (40 chars) are emitted
 - `BUILDBANNER_CUSTOM_*` env vars produce identical `custom` maps (lowercased suffix keys)
@@ -56,4 +56,4 @@ bundle exec --gemfile=ruby/Gemfile rspec tests/parity/ruby_parity_spec.rb
 
 ## Shared fixtures
 
-All tests load `shared/test_fixtures.json`. Adding a new fixture case there automatically adds a test case to all three languages.
+All three suites load `shared/test_fixtures.json`, so a fixture case added there becomes a test case in all three languages.
