@@ -44,7 +44,7 @@ layout (`~/projects/buildbanner/buildbanner/`) is pending.
 - Set all DOM content with `textContent` / `createElement`, never `innerHTML`.
 - All styles are class-based CSS inside the Shadow DOM, with no inline `style=""`, so the banner works under a strict CSP.
 - All timestamps are ISO 8601 UTC.
-- Every server helper response has `_buildbanner: { version: 1 }`, `sha` (7-char), `sha_full` (40-char) and `server_started`.
+- Server helper responses follow `shared/schema.json`: `sha` and `branch` are required, and a helper that fails returns fewer fields.
 - Banner host element: `data-testid="buildbanner"`. Segments: `data-segment="sha"`, `"branch"`, `"app-name"`, `"custom-{key}"`, etc.
 - `BUILDBANNER_CUSTOM_*` env vars → `custom.*` fields (lowercased suffix).
 
@@ -68,6 +68,5 @@ scripts/         Repo tooling: merge gate, gate lock, hooks library, doctor, Nod
 ## Conventions
 
 - Commit messages: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`.
-- First commit on a task branch must start with `Task N:` (e.g., `Task 7: feat: add time formatting module`).
 - Every task produces tests, and the task names each test file.
 - Server helper tests must mock the git subprocess or exec call. They must not depend on `.git` or the `git` binary.
