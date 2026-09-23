@@ -1,4 +1,4 @@
-/** Tests for token auth client-side guardrails. */
+/** Tests for the console warnings the client logs about data-token. */
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { checkTokenWarnings } from "../src/token-warnings.js";

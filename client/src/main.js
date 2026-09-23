@@ -384,8 +384,8 @@ function _autoInit() {
 }
 
 /**
- * True when the script tag has data-cache="true", a data-endpoint, and a valid cache entry for that
- * endpoint.
+ * True when the script tag has no data-manual, has data-cache="true" and a data-endpoint, and a
+ * valid cache entry exists for that endpoint.
  */
 function _hasCachedData(scriptEl) {
   if (!scriptEl) return false;

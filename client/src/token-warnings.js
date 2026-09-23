@@ -21,8 +21,8 @@ function _isSafeHostname(hostname) {
 }
 
 /**
- * Warn about a short token or a token on a public origin. Calls console.warn directly, so data-
- * debug and the log cap do not apply.
+ * Warn about a short token or a token on a public origin. Calls console.warn directly, so
+ * data-debug and the log cap do not apply.
  */
 export function checkTokenWarnings(config) {
   try {
