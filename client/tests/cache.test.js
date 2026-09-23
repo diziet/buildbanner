@@ -127,7 +127,6 @@ describe("cache module", () => {
     const originalSetItem = localStorage.setItem;
     localStorage.setItem = () => { throw new Error("QuotaExceeded"); };
 
-    // Should not throw
     expect(() => writeCache("/buildbanner.json", { sha: "abc" }, "dark")).not.toThrow();
     localStorage.setItem = originalSetItem;
   });

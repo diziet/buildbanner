@@ -96,7 +96,7 @@ describe("polling module", () => {
     await vi.advanceTimersByTimeAsync(200_000);
     expect(fetchFn).toHaveBeenCalledTimes(2);
 
-    // Should be capped at 300, not 400
+    // Capped at 300, not 400.
     await vi.advanceTimersByTimeAsync(300_000);
     expect(fetchFn).toHaveBeenCalledTimes(3);
 
@@ -112,7 +112,6 @@ describe("polling module", () => {
 
     startPolling(config, fetchFn, onData, null);
 
-    // Go hidden
     Object.defineProperty(document, "hidden", { value: true, configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
 
@@ -128,15 +127,13 @@ describe("polling module", () => {
 
     startPolling(config, fetchFn, onData, null);
 
-    // Go hidden
     Object.defineProperty(document, "hidden", { value: true, configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
 
-    // Go visible
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
 
-    // Immediate fetch (async tick)
+    // The immediate fetch runs on the next async tick.
     await vi.advanceTimersByTimeAsync(0);
     expect(fetchFn).toHaveBeenCalledTimes(1);
     expect(onData).toHaveBeenCalledTimes(1);
@@ -149,7 +146,6 @@ describe("polling module", () => {
 
     startPolling(config, fetchFn, onData, null);
 
-    // Go hidden then visible
     Object.defineProperty(document, "hidden", { value: true, configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
@@ -159,7 +155,7 @@ describe("polling module", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(fetchFn).toHaveBeenCalledTimes(1);
 
-    // Next poll at normal 10s
+    // The next poll comes at the normal 10 s.
     await vi.advanceTimersByTimeAsync(10_000);
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
@@ -175,7 +171,7 @@ describe("polling module", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(fetchFn).toHaveBeenCalledTimes(1);
 
-    // Go hidden then visible — immediate fetch still fails
+    // Hidden, then visible: the immediate fetch fails again.
     Object.defineProperty(document, "hidden", { value: true, configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
@@ -184,7 +180,7 @@ describe("polling module", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(fetchFn).toHaveBeenCalledTimes(2);
 
-    // Interval should still be backed off (40s after another failure), not reset to 10s
+    // The interval stays backed off (40 s after another failure); it is not reset to 10 s.
     await vi.advanceTimersByTimeAsync(10_000);
     expect(fetchFn).toHaveBeenCalledTimes(2); // no new fetch at 10s
 
@@ -212,7 +208,7 @@ describe("polling module", () => {
     const state = startPolling(config, fetchFn, onData, null);
     stopPolling(state);
 
-    // Visibility change should not trigger fetch
+    // After stopPolling, a visibility change triggers no fetch.
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
 
@@ -266,7 +262,7 @@ describe("polling module", () => {
 
     await vi.advanceTimersByTimeAsync(5_000);
 
-    // Banner should still be in the DOM with its content
+    // The banner and its content are still in the DOM.
     const found = document.querySelector("[data-testid='buildbanner']");
     expect(found).not.toBeNull();
     expect(found.textContent).toBe("existing content");
@@ -315,7 +311,7 @@ describe("polling module", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(state.currentInterval).toBe(20);
 
-    // Third call succeeds — should reset to 5
+    // The third call succeeds, and the interval resets to 5 s.
     await vi.advanceTimersByTimeAsync(20_000);
     expect(state.currentInterval).toBe(5);
     expect(onData).toHaveBeenCalledTimes(1);

@@ -185,10 +185,9 @@ describe("attachCopyHandler", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(el.textContent).toBe("Copied!");
 
-    // writeText called only once
     expect(writeText).toHaveBeenCalledTimes(1);
 
-    // After 1500ms, text reverts correctly
+    // After 1500 ms the SHA text is back.
     vi.advanceTimersByTime(1500);
     expect(el.textContent).toBe(TEST_SHA_SHORT);
   });

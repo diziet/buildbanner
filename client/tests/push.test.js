@@ -3,12 +3,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { applyPush, removePush, resolvePositionMode } from "../src/push.js";
 
-/** Helper to set computed padding on <html>. */
+/** Set the inline padding on <html>, which getComputedStyle then reports. */
 function setHtmlPadding(prop, value) {
   document.documentElement.style[prop] = value ? `${value}px` : "";
 }
 
-/** Helper to read inline padding from <html>. */
+/** Read the inline padding of <html> in pixels. */
 function readInlinePadding(prop) {
   const raw = document.documentElement.style[prop];
   return parseInt(raw, 10) || 0;
@@ -82,7 +82,7 @@ describe("push module", () => {
       const config = { push: true, position: "top" };
       const pushState = applyPush(config, 28, mockLogger);
 
-      // Simulate third-party adding 10px on top of the banner's 28px
+      // Another script adds 10px on top of the banner's 28px.
       setHtmlPadding("paddingTop", 38);
 
       removePush(28, pushState, config);
@@ -93,7 +93,7 @@ describe("push module", () => {
       const config = { push: true, position: "top" };
       const pushState = applyPush(config, 28, mockLogger);
 
-      // Simulate third-party reducing padding below banner height
+      // Another script reduces the padding below the banner height.
       setHtmlPadding("paddingTop", 5);
 
       removePush(28, pushState, config);
@@ -133,7 +133,7 @@ describe("push module", () => {
 
       expect(readInlinePadding("paddingTop")).toBe(28);
 
-      // Simulate third-party adding padding after init, then dismiss
+      // Another script adds padding after init; then the banner is dismissed.
       setHtmlPadding("paddingTop", 38);
       removePush(28, pushState, config);
       expect(readInlinePadding("paddingTop")).toBe(10);
@@ -147,13 +147,13 @@ describe("push module", () => {
       const result = applyPush(config, 28, mockLogger);
 
       expect(result.mode).toBe("push");
-      // <html> background should match <body> so padding area isn't white
+      // <html> gets the <body> background, so the padding area is not white.
       const htmlBg = document.documentElement.style.backgroundColor;
       expect(htmlBg).toBe("rgb(30, 30, 30)");
     });
 
     it("push mode matches black body background to html element", () => {
-      // Verifies background-matching works with a fully black body background
+      // A black <body> background is copied too.
       document.body.style.backgroundColor = "rgb(0, 0, 0)";
       const config = { push: true, position: "top" };
       const result = applyPush(config, 28, mockLogger);
@@ -169,7 +169,7 @@ describe("push module", () => {
 
       expect(result.mode).toBe("overlay");
       expect(readInlinePadding("paddingTop")).toBe(0);
-      // Should not touch <html> background
+      // The <html> background is unchanged.
       expect(document.documentElement.style.backgroundColor).toBe("");
     });
 
@@ -190,7 +190,7 @@ describe("push module", () => {
       const config = { push: true, position: "top" };
       applyPush(config, 28, mockLogger);
 
-      // Should keep the existing <html> background, not overwrite it
+      // The existing <html> background is kept.
       expect(document.documentElement.style.backgroundColor).toBe("rgb(50, 50, 50)");
     });
   });

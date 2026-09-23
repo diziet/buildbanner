@@ -37,18 +37,18 @@ describe("BuildBanner lifecycle", () => {
     document.body.innerHTML = "";
   });
 
-  /** Helper: init banner with given data. */
+  /** Initialize the banner with the given data. */
   async function initBanner(data = DEFAULT_DATA) {
     mockFetch.mockResolvedValue(mockResponse(data));
     await BuildBanner.init({ endpoint: "/buildbanner.json" });
   }
 
-  /** Helper: get the banner host element. */
+  /** Return the banner host element. */
   function getHost() {
     return document.querySelector("[data-testid='buildbanner']");
   }
 
-  /** Helper: get text content of a segment inside shadow DOM. */
+  /** Return the text of a segment inside the shadow DOM. */
   function segmentText(host, name) {
     return host.shadowRoot.querySelector(`[data-segment='${name}']`).textContent;
   }

@@ -77,7 +77,7 @@ describe("ARIA live region", () => {
 
     const liveRegion = wrapper.querySelector("[data-bb-live-region]");
     expect(liveRegion).not.toBeNull();
-    // Should NOT have role="status" — no announcement needed
+    // The status did not change, so there is no role="status" and no announcement.
     expect(liveRegion.hasAttribute("role")).toBe(false);
     expect(liveRegion.hasAttribute("aria-live")).toBe(false);
   });
@@ -98,7 +98,7 @@ describe("ARIA live region", () => {
 
     const liveRegion = wrapper.querySelector("[data-bb-live-region]");
     expect(liveRegion).not.toBeNull();
-    // No status change, so live region should be inert
+    // The status did not change, so the live region has no role.
     expect(liveRegion.hasAttribute("role")).toBe(false);
   });
 });

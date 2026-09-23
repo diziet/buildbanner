@@ -119,7 +119,7 @@ describe("time utilities", () => {
       const timerId = startUptimeTicker(element, iso);
       expect(timerId).not.toBeNull();
 
-      // Sentinel proves clearing actually prevents updates
+      // A running interval would overwrite the sentinel.
       element.textContent = "sentinel";
       clearInterval(timerId);
       vi.advanceTimersByTime(60000);

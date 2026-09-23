@@ -74,12 +74,10 @@ describe("dismiss module", () => {
     document.body.appendChild(btn);
 
     const event = new KeyboardEvent("keydown", { key, bubbles: true });
-    // Native <button> in jsdom doesn't fire click on keydown, so we
-    // verify the button is a focusable <button> element that would
-    // natively handle keyboard activation in real browsers.
+    // Browsers turn Enter or Space on a native <button> into a click; jsdom does not,
+    // so this keydown fires no click.
     btn.dispatchEvent(event);
-    // In jsdom, native button keyboard handling doesn't fire click,
-    // so we verify via direct click that the handler works.
+    // The direct click checks the handler instead.
     btn.click();
 
     expect(onDismiss).toHaveBeenCalled();
