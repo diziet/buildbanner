@@ -6,9 +6,10 @@
 # stops (exit code is the stage's real exit code, never parsed output).
 #
 # Usage: scripts/gate.sh [--docs-only]
-#   --docs-only  run only gate-wiring-check and test-js (the merge path passes this for PRs that
-#                change only *.md files outside the code and test directories). test-js stays,
-#                because tests/docs.test.js reads docs/README.md and docs/security.md.
+#   --docs-only  run only doc-facts-check, doc-refs-check, gate-wiring-check and test-js (the merge
+#                path passes this for PRs that change only *.md files outside the code and test
+#                directories). test-js stays, because tests/docs.test.js reads docs/README.md and
+#                docs/security.md.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -41,10 +42,10 @@ run_stage() {
   fi
 }
 
-stages="gate-wiring-check test-ruby test-parity test-python test-js test-tooling"
+stages="doc-facts-check doc-refs-check gate-wiring-check test-ruby test-parity test-python test-js test-tooling"
 if [ "$docs_only" = 1 ]; then
-  echo "gate: docs-only change; running gate-wiring-check and test-js only"
-  stages="gate-wiring-check test-js"
+  echo "gate: docs-only change; running doc-facts-check, doc-refs-check, gate-wiring-check and test-js only"
+  stages="doc-facts-check doc-refs-check gate-wiring-check test-js"
 fi
 
 for stage in $stages; do

@@ -6,7 +6,8 @@
 .DEFAULT_GOAL := help
 .PHONY: help install deps node-install node-lock venv bundle doctor hooks-install \
         test test-js test-python test-ruby test-parity test-tooling build clean \
-        gate gate-wiring-check worktree sync merge branches-gc
+        gate gate-wiring-check worktree sync merge branches-gc doc-refs-check doc-facts \
+        doc-facts-check
 
 # ---- Pins (the single source; doctor and install both read these) -----------------------------
 NODE_VERSION   := 26.10.0
@@ -84,11 +85,20 @@ test-js: ## Blocking gate: vitest under the pinned Node for tests/ (with tests/p
 test-tooling: ## Blocking gate: tests for scripts/ and .githooks/, run against throwaway git repos
 	$(PY) -m pytest -q -p no:cacheprovider --rootdir=. tests/tooling
 
-gate: ## Blocking gate: gate-wiring-check, then every test suite, under the gate lock (stage list in scripts/gate.sh)
+gate: ## Blocking gate: doc-facts-check, doc-refs-check, gate-wiring-check, then every test suite, under the gate lock (stage list in scripts/gate.sh)
 	$(LOCKED) bash scripts/gate.sh
 
 gate-wiring-check: ## Blocking gate: every test file run by exactly one suite, no orphan script, blocking targets wired
 	$(PY) scripts/check_gate_wiring.py --node-version $(NODE_VERSION) --ruby-bin $(RUBY_BIN)
+
+doc-refs-check: ## Blocking gate, fails closed: paths, make targets and --flags in tracked .md code spans must resolve; stale exemptions in docs/doc-refs-allow.txt fail
+	$(PY) scripts/check_doc_refs.py
+
+doc-facts: ## Sanctioned path: regenerate <!-- fact:NAME --> values in tracked .md files from scripts/doc_facts_registry.py
+	$(PY) scripts/doc_facts.py --write
+
+doc-facts-check: ## Blocking gate: print the diff and fail when a doc fact is stale; rewrites the value first, so the re-run needs only a re-stage
+	$(PY) scripts/doc_facts.py --fix-stale
 
 # ---- Build ------------------------------------------------------------------------------------
 build: ## Sanctioned path: rebuild client/dist/ under the pinned Node; commit it with the source change

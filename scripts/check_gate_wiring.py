@@ -46,6 +46,10 @@ KNOWN_TEST_FILES: frozenset[str] = frozenset(
         "tests/parity/node.test.js",
         "tests/parity/ruby_parity_spec.rb",
         "tests/parity/test_python.py",
+        "tests/tooling/test_check_doc_refs.py",
+        "tests/tooling/test_doc_checks_repo.py",
+        "tests/tooling/test_doc_common.py",
+        "tests/tooling/test_doc_facts.py",
         "tests/tooling/test_hooks.py",
     }
 )
