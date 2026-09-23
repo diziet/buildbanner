@@ -1,4 +1,4 @@
-/** BuildBanner Node.js core — git info extraction and JSON response builder. */
+/** Read the git information and build the BuildBanner JSON response for the Node adapters. */
 'use strict';
 
 const childProcess = require('child_process');
@@ -9,7 +9,7 @@ const SHORT_SHA_LEN = 7;
 const MIN_SHA_FULL_LEN = 8;
 const MIN_TOKEN_LEN = 16;
 
-// Mutable reference for testing — tests can replace _exec to mock git calls.
+// Tests replace _exec through _setExec to mock the git calls.
 let _exec = childProcess.execSync;
 
 /** Run a git command, return trimmed stdout or null on failure. */
@@ -45,7 +45,7 @@ function _readGitInfo() {
   if (logLine) {
     const parts = logLine.split(' ');
     shaFull = parts[0] || null;
-    // Derive short SHA deterministically — git %h length varies by repo
+    // Cut the short SHA from the full one, because git's %h length varies by repo.
     sha = shaFull ? shaFull.slice(0, SHORT_SHA_LEN) : null;
     commitDate = parts[2] || null;
   }
@@ -61,7 +61,10 @@ function _readGitInfo() {
   return { sha, shaFull, branch, commitDate, repoUrl };
 }
 
-/** Sanitize a repo URL — strip userinfo, .git suffix, trailing slashes. */
+/**
+ * Sanitize a repo URL: convert the SSH forms to https, and remove the userinfo, the .git suffix
+ * and trailing slashes. Returns null for a URL that does not parse.
+ */
 function _sanitizeUrl(raw) {
   if (!raw) return null;
 
@@ -164,13 +167,13 @@ function _safeCompare(a, b) {
  * @returns {{ getBannerData: Function, checkAuth: Function }}
  */
 function createBanner(options = {}) {
-  // Read git info once at creation time (cached for all subsequent calls)
+  // Read the git information once, when the banner is created; every call reuses it.
   const gitInfo = _readGitInfo();
   const staticInfo = _applyEnvOverrides(gitInfo);
   const customEnv = _readCustomEnv();
   const serverStarted = new Date().toISOString();
 
-  // Snapshot env values at creation time
+  // Read these environment variables once, at creation.
   const deployedAt = process.env.BUILDBANNER_DEPLOYED_AT || null;
   const appName = process.env.BUILDBANNER_APP_NAME || null;
   const environment = process.env.BUILDBANNER_ENVIRONMENT || null;
@@ -180,7 +183,7 @@ function createBanner(options = {}) {
 
   let extrasErrorLogged = false;
 
-  // Token: programmatic wins over env var (nullish coalescing)
+  // options.token wins over BUILDBANNER_TOKEN.
   const token = options.token ?? process.env.BUILDBANNER_TOKEN ?? null;
   let authEnabled = false;
 

@@ -1,4 +1,4 @@
-/** Root vitest configuration — excludes Playwright e2e tests. */
+/** Vitest configuration for the root tests/ directory; the Playwright tests in tests/e2e are excluded. */
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({

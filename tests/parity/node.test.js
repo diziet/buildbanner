@@ -1,4 +1,4 @@
-/** Parity tests — verify Node server helper matches shared fixtures exactly. */
+/** Parity tests: the Node server helper's output matches shared/test_fixtures.json exactly. */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -196,7 +196,7 @@ describe('parity — JSON structure and field names', () => {
       expect(data).toHaveProperty(key);
     }
 
-    // Verify types from shared field_types spec
+    // Check each field's type against field_types in the shared fixtures.
     for (const [field, jsonType] of Object.entries(FIXTURES.field_types)) {
       if (field in data) {
         expect(typeof data[field]).toBe(TYPE_MAP[jsonType]);
@@ -216,7 +216,7 @@ describe('parity — JSON structure and field names', () => {
 
     expect(data._buildbanner).toEqual({ version: 1 });
     expect(data).toHaveProperty('server_started');
-    // Null fields should be absent, not present with null value
+    // A null field is omitted, not sent as null.
     if ('sha' in data) expect(data.sha).not.toBeNull();
     if ('branch' in data) expect(data.branch).not.toBeNull();
     if ('repo_url' in data) expect(data.repo_url).not.toBeNull();

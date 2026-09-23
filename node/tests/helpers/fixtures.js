@@ -26,7 +26,7 @@ export function fakeCreateBanner(token = null) {
             Object.assign(data, extra);
           }
         } catch {
-          // extras threw — omit them
+          // The extras callback threw, so the response omits the extras.
         }
       }
       return data;

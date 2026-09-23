@@ -1,4 +1,4 @@
-/** E2E smoke tests — wires built client + Express middleware in a real browser. */
+/** End-to-end smoke tests: the built client and the Express middleware in a real browser. */
 const { test, expect } = require('@playwright/test');
 const { createServer, closeServer } = require('./test-server');
 

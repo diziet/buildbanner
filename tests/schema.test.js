@@ -137,11 +137,11 @@ describe("shared/test_fixtures.json", () => {
 
     for (const [envVar, entry] of Object.entries(mapping)) {
       const field = entry.field;
-      // null field means env var is not mapped to a response field
+      // A null field means the variable maps to no response field.
       if (field === null) {
         continue;
       }
-      // custom.* is a wildcard pattern for custom sub-keys — skip exact match
+      // custom.* stands for any custom key, so there is no exact field to check.
       if (field.startsWith("custom.")) {
         expect(schemaProps).toContain("custom");
         continue;
