@@ -7,7 +7,11 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-vendor/bundle/
+# Any vendor/ directory: ruby/vendor/bundle holds the gems make bundle installs.
+vendor/
+# The worktree's .venv (make venv) and pinned Node (make node-install).
+.venv/
+.tools/
 
 # Environment
 .env
