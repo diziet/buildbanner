@@ -1,8 +1,11 @@
-/** Polling module — periodic data refresh with exponential backoff and visibility awareness. */
+/** Poll the endpoint, with exponential backoff and a pause while the tab is hidden. */
 
 const MAX_INTERVAL_SEC = 300;
 
-/** Start polling for banner data updates. */
+/**
+ * Start polling every config.poll seconds; returns the polling state, or null when config.poll is
+ * not a positive number.
+ */
 export function startPolling(config, fetchFn, onData, logger) {
   const baseInterval = config.poll;
   if (!baseInterval || baseInterval <= 0) return null;

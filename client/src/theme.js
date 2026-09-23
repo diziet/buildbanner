@@ -1,4 +1,4 @@
-/** Theme module — provides dark/light/auto CSS for the banner. */
+/** CSS variables for the dark, light and auto themes. */
 
 import constants from "./style-constants.json" with { type: "json" };
 
@@ -56,7 +56,7 @@ export function getThemeStyles(theme) {
     }`;
   }
 
-  // Default: dark
+  // Any other theme value gets the dark theme.
   return `
     :host {
       ${_colorVars(DARK_BG, DARK_FG, DARK_LINK)}

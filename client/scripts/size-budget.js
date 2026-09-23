@@ -1,8 +1,8 @@
-/** Shared size budget constants and helpers for BuildBanner client. */
+/** The client's gzipped size budget and a helper to measure a file against it. */
 const { readFileSync } = require("node:fs");
 const { gzipSync } = require("node:zlib");
 
-// Increased from 8000 for localStorage cache module in Task 50 (actual ~8277)
+// Raised from 8000 in Task 50 for the localStorage cache module (bundle then about 8277 bytes).
 const BUDGET_BYTES = 8500;
 
 /** Return the gzipped byte size of a file. */

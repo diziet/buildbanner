@@ -24,12 +24,11 @@ RSpec.describe BuildBanner::Middleware do
   let(:options) { {} }
   let(:app) { described_class.new(inner_app, options) }
 
-  # Helper: stub Open3.capture2 with optional overrides per git command.
-  # Overrides are checked first so more-specific patterns win.
+  # Stub Open3.capture2, with optional overrides per git command.
+  # Overrides are checked first, so a more specific pattern wins.
   def stub_git(overrides = {})
     allow(Open3).to receive(:capture2) do |*args|
       cmd = args.flatten.join(' ')
-      # Check overrides first, then fall back to defaults.
       match = overrides.find { |pattern, _| cmd.match?(pattern) }
       match ||= DEFAULT_GIT_STUBS.find { |pattern, _| cmd.match?(pattern) }
       if match
@@ -41,7 +40,7 @@ RSpec.describe BuildBanner::Middleware do
     end
   end
 
-  # Helper: build a fresh middleware + test session with given options.
+  # Build a new middleware and test session with the given options.
   def build_app(opts = {})
     mw = described_class.new(inner_app, opts)
     Rack::Test::Session.new(Rack::MockSession.new(mw))

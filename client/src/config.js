@@ -1,4 +1,4 @@
-/** Client configuration parsing for BuildBanner. */
+/** Parse and validate the client configuration from data attributes and init() options. */
 
 const VALID_POSITIONS = ["top", "bottom"];
 const VALID_THEMES = ["dark", "light", "auto"];
@@ -27,7 +27,10 @@ export const DEFAULT_CONFIG = Object.freeze({
   cache: false,
 });
 
-/** Parse a boolean data attribute string. */
+/**
+ * Parse "true", "1", "yes" or "" as true and "false", "0" or "no" as false; anything else gives
+ * defaultValue.
+ */
 function _parseBool(value, defaultValue) {
   if (value == null) return defaultValue;
   const lower = String(value).toLowerCase().trim();
@@ -44,19 +47,19 @@ function _parseIntOrDefault(value, defaultValue) {
   return parsed;
 }
 
-/** Parse and clamp height to valid range. */
+/** Parse the height and clamp it to MIN_HEIGHT..MAX_HEIGHT. */
 function _parseHeight(value) {
   const parsed = _parseIntOrDefault(value, DEFAULT_CONFIG.height);
   return Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, parsed));
 }
 
-/** Parse poll interval as integer seconds. */
+/** Parse the poll interval in whole seconds; a negative value gives the default. */
 function _parsePoll(value) {
   const parsed = _parseIntOrDefault(value, DEFAULT_CONFIG.poll);
   return parsed < 0 ? DEFAULT_CONFIG.poll : parsed;
 }
 
-/** Parse comma-separated list, trimming whitespace. */
+/** Split a comma-separated list and trim each entry; an empty value gives null. */
 function _parseEnvHide(value) {
   if (value == null) return null;
   const trimmed = String(value).trim();
@@ -109,7 +112,7 @@ function _validateConfig(config) {
   config.shaColor = _validateEnum(config.shaColor, VALID_SHA_COLOR, DEFAULT_CONFIG.shaColor);
   config.cache = _parseBool(config.cache, DEFAULT_CONFIG.cache);
 
-  // Defensive copies to prevent shared mutable array references
+  // Copy the arrays, so that the config never shares an array with the caller.
   if (Array.isArray(config.hostPatterns)) {
     config.hostPatterns = [...config.hostPatterns];
   }
@@ -120,7 +123,10 @@ function _validateConfig(config) {
   return config;
 }
 
-/** Merge data-attribute config with programmatic options (programmatic wins). */
+/**
+ * Merge the data-attribute config with init() options; an init() option wins, and unknown keys are
+ * ignored.
+ */
 export function resolveConfig(dataAttrs, programmaticOpts) {
   const base = { ...DEFAULT_CONFIG, ...dataAttrs };
   if (!programmaticOpts || typeof programmaticOpts !== "object") {
@@ -134,7 +140,7 @@ export function resolveConfig(dataAttrs, programmaticOpts) {
     merged[key] = programmaticOpts[key];
   }
 
-  // Normalize endpoint — falsy values fall back to base, matching parseConfig
+  // An empty endpoint falls back to the base value, as in parseConfig.
   if (!merged.endpoint) merged.endpoint = base.endpoint;
 
   return _validateConfig(merged);

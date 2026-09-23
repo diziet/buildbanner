@@ -1,6 +1,6 @@
-/** Time formatting utilities for uptime and deploy age display. */
+/** Format the uptime and the deploy age shown in the banner. */
 
-/** Format elapsed milliseconds as a human-readable uptime string. */
+/** Format elapsed milliseconds as "2d 3h", "3h 5m", "5m" or "42s". */
 function _formatElapsed(ms) {
   const totalSeconds = Math.floor(ms / 1000);
   const days = Math.floor(totalSeconds / 86400);
@@ -39,8 +39,8 @@ export function formatDeployAge(deployedAtISO) {
 }
 
 /**
- * Start a ticker that updates element textContent with live uptime every 60s.
- * Self-cleans if element is removed from DOM. Returns timer ID for cleanup.
+ * Set the element's text to the uptime now and every 60 s after.
+ * The first tick after the element leaves the DOM clears the interval. Returns the interval ID.
  */
 export function startUptimeTicker(element, serverStartedISO) {
   if (!element || !serverStartedISO) return null;

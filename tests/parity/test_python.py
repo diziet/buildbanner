@@ -1,4 +1,4 @@
-"""Parity tests — verify Python server helper matches shared fixtures exactly."""
+"""Parity tests: the Python server helper's output matches shared/test_fixtures.json exactly."""
 
 import json
 import os
@@ -81,10 +81,10 @@ def _make_git_side_effect(
 
 
 def _load_core(git_kwargs=None, **env_overrides):
-    """Reload buildbanner.core with mocked git and clean env, returning (core, patch_ctx).
+    """Reload buildbanner.core with mocked git and a clean environment.
 
-    Returns a context manager that keeps subprocess.run and os.environ patched.
-    Usage:
+    Returns a context manager that yields the module and keeps subprocess.run and
+    os.environ patched until it exits. Usage:
         with _load_core(BUILDBANNER_APP_NAME='x') as core:
             data = core.get_banner_data()
     """
@@ -242,7 +242,7 @@ class TestJsonStructure:
         for key in FIXTURES['expected_top_level_keys']:
             assert key in data, f'Missing key: {key}'
 
-        # Verify types from shared field_types spec
+        # Check each field's type against field_types in the shared fixtures.
         for field, json_type in FIXTURES['field_types'].items():
             if field in data:
                 assert isinstance(data[field], TYPE_MAP[json_type]), \

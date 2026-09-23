@@ -1,4 +1,4 @@
-/** Generate buildbanner.css — fallback stylesheet for non-Shadow-DOM environments. */
+/** Write buildbanner.css, the fallback stylesheet for browsers without Shadow DOM. */
 const { writeFileSync, mkdirSync } = require("node:fs");
 const { resolve } = require("node:path");
 

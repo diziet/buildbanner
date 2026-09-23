@@ -175,7 +175,7 @@ describe("BuildBanner main", () => {
 
     const initPromise = BuildBanner.init({ endpoint: "/test.json" });
 
-    // Placeholder should be in DOM before fetch resolves
+    // The empty banner is in the DOM before the fetch resolves.
     await vi.waitFor(() => {
       const host = document.querySelector("[data-testid='buildbanner']");
       expect(host).not.toBeNull();
@@ -185,7 +185,7 @@ describe("BuildBanner main", () => {
     const shadow = host.shadowRoot;
     const wrapper = shadow.querySelector(".bb-wrapper");
 
-    // Wrapper should exist but have no segment content yet
+    // The wrapper exists but has no segments yet.
     expect(wrapper).not.toBeNull();
     expect(wrapper.querySelector("[data-segment]")).toBeNull();
 
@@ -193,7 +193,7 @@ describe("BuildBanner main", () => {
     resolveFetch(mockResponse({ sha: "abc1234", branch: "main" }));
     await initPromise;
 
-    // After fetch, segments should be populated
+    // After the fetch, the segments are rendered.
     expect(shadow.querySelector("[data-segment='sha']").textContent).toBe("abc1234");
   });
 
@@ -315,10 +315,10 @@ describe("BuildBanner parse-time cache rendering", () => {
     createBannerScript(endpoint, { cache: true });
     setReadyState("loading");
 
-    // Import triggers auto-init synchronously when cache is warm
+    // With a cache entry, importing the module runs auto-init at once.
     await import("../src/main.js");
 
-    // Banner should render without waiting for DOMContentLoaded
+    // The banner renders without waiting for DOMContentLoaded.
     await vi.waitFor(() => {
       const host = document.querySelector("[data-testid='buildbanner']");
       expect(host).not.toBeNull();

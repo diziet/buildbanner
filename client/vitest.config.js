@@ -1,4 +1,4 @@
-/** Vitest configuration for BuildBanner client tests. */
+/** Vitest configuration for the client tests in client/tests. */
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({

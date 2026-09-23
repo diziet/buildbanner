@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderSegments } from "../src/segments.js";
 
-/** Helper: get data-segment values in DOM order. */
+/** Return the data-segment values in DOM order. */
 function getSegmentOrder(wrapper) {
   const elements = wrapper.querySelectorAll("[data-segment]");
   return Array.from(elements).map((el) => el.getAttribute("data-segment"));
@@ -44,7 +44,7 @@ describe("renderSegments", () => {
     vi.useRealTimers();
   });
 
-  /** Render helper that tracks ticker for cleanup. */
+  /** Render the data and keep the uptime ticker ID for cleanup. */
   function render(data) {
     const result = renderSegments(data, wrapper);
     lastTickerTimerId = result.tickerTimerId;

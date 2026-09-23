@@ -1,4 +1,4 @@
-/** Segment rendering — builds the full banner content in canonical order. */
+/** Build the banner segments in the spec's canonical render order. */
 
 import { formatUptime, formatDeployAge, startUptimeTicker } from "./time.js";
 import { createLink } from "./links.js";
@@ -111,7 +111,10 @@ function _createMaybeLinkedSegment(segmentName, text, linkUrl) {
     : _createSpan(segmentName, text);
 }
 
-/** Check if status value changed from previous, updating tracker. */
+/**
+ * True when the field's status differs from the one in previousStatuses, or has none yet; records
+ * the new status.
+ */
 function _hasStatusChanged(field, newStatus, previousStatuses) {
   const current = newStatus && newStatus.status ? newStatus.status : null;
   const isFirstTrack = !(field in previousStatuses);
@@ -239,7 +242,6 @@ export function renderSegments(data, wrapper, config = {}, previousStatuses = {}
     }
   }
 
-  // Append all segments with separators
   for (let i = 0; i < segments.length; i++) {
     _appendSegment(wrapper, segments[i], i === 0);
   }

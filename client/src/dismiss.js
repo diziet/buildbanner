@@ -1,12 +1,15 @@
-/** Dismiss functionality — session/permanent/none dismiss modes. */
+/** The dismiss button and the stored dismissal for the session, permanent and none modes. */
 
 const STORAGE_KEY = "buildbanner-dismissed";
 
-// NOTE: Module-level singleton flag. When storage is blocked, this is the only
-// dismiss memory. Shared across all callers for the lifetime of the page.
+// Module-level flag, shared by every caller for the life of the page. When storage is
+// blocked, it is the only record of a dismissal.
 let dismissedInMemory = false;
 
-/** Return the appropriate Storage object, or null if unavailable/invalid. */
+/**
+ * Return sessionStorage or localStorage for the dismiss mode, or null when there is none or access
+ * fails.
+ */
 function _getStorage(dismiss) {
   try {
     if (dismiss === "session") return sessionStorage;

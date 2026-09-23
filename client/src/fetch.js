@@ -1,11 +1,10 @@
-/** Fetch module — retrieves banner data from the JSON endpoint. */
+/** Fetch the banner data from the JSON endpoint. */
 
 const TIMEOUT_MS = 3000;
 
 /**
- * Fetch banner data from the endpoint.
- * Returns parsed JSON object on success, null on any failure.
- * Never throws.
+ * Fetch the banner data from the endpoint, with a TIMEOUT_MS timeout.
+ * Returns the parsed JSON object, or null on any failure. Never throws.
  */
 export async function fetchBannerData(endpoint, options = {}) {
   const { token, logger } = options;

@@ -1,14 +1,14 @@
-/** Cache module — read/write/validate localStorage banner cache. */
+/** Read, write and validate the banner cache in localStorage (data-cache). */
 
 const CACHE_KEY_PREFIX = "buildbanner_cache";
-const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-/** Build a storage key that includes the endpoint URL for isolation. */
+/** Storage key for one endpoint, so two endpoints never share an entry. */
 function _storageKey(endpoint) {
   return `${CACHE_KEY_PREFIX}:${endpoint}`;
 }
 
-/** Check if localStorage is available. */
+/** True when a test write to localStorage succeeds. */
 function _isStorageAvailable() {
   try {
     const key = "__bb_test__";
@@ -20,7 +20,10 @@ function _isStorageAvailable() {
   }
 }
 
-/** Validate the shape and freshness of a cache entry. */
+/**
+ * True when the entry is for this endpoint, has the expected fields, and is at most
+ * CACHE_MAX_AGE_MS old.
+ */
 function _isValidCache(entry, endpoint) {
   if (!entry || typeof entry !== "object") return false;
   if (entry.endpoint !== endpoint) return false;
@@ -79,6 +82,6 @@ export function writeCache(endpoint, data, theme) {
     };
     localStorage.setItem(_storageKey(endpoint), JSON.stringify(entry));
   } catch {
-    // Quota exceeded or other storage error — silently degrade
+    // Quota exceeded or another storage error: skip the write; the banner works without the cache.
   }
 }

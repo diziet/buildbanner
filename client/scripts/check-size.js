@@ -1,4 +1,4 @@
-/** Check gzipped size of the minified bundle stays under budget. */
+/** Exit 1 when the gzipped dist/buildbanner.min.js exceeds BUDGET_BYTES. */
 const { resolve } = require("node:path");
 const { BUDGET_BYTES, getGzippedSize } = require("./size-budget.js");
 

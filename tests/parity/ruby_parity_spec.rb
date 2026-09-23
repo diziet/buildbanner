@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Parity tests — verify Ruby server helper matches shared fixtures exactly.
+# Parity tests: the Ruby server helper's output matches shared/test_fixtures.json exactly.
 
 require 'json'
 require 'rack/test'
@@ -185,7 +185,7 @@ RSpec.describe 'Cross-language parity' do
         expect(body).to have_key(key), "Missing key: #{key}"
       end
 
-      # Verify types from shared field_types spec
+      # Check each field's type against field_types in the shared fixtures.
       PARITY_FIXTURES['field_types'].each do |field, json_type|
         next unless body.key?(field)
 

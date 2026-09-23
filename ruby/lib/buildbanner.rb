@@ -1,4 +1,4 @@
-# BuildBanner Ruby server helper — Rack middleware.
+# BuildBanner server helper for Ruby: Rack middleware that serves the banner JSON.
 
 require 'json'
 require 'logger'
@@ -50,8 +50,8 @@ module BuildBanner
     def call(env)
       return @app.call(env) unless _matches_request?(env)
 
-      # Auth check runs outside the data-building rescue so that auth
-      # failures are never swallowed into a 200 fallback.
+      # A failed auth check returns 401 before any data is built. The rescue below
+      # also covers the check, but only an exception reaches its 200 fallback.
       unless _check_auth(env)
         return _json_response(401, { 'error' => 'Unauthorized' })
       end

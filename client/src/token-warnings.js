@@ -1,4 +1,4 @@
-/** Token auth client-side safety guardrails. */
+/** Console warnings for a data-token that is short or used on a public origin. */
 
 const SHORT_TOKEN_THRESHOLD = 16;
 
@@ -7,9 +7,9 @@ const SAFE_SUFFIXES = [".local", ".internal", ".test"];
 const RFC1918_PREFIXES = ["10.", "192.168."];
 
 /**
- * Check if a hostname is a safe/internal origin.
- * Covers localhost, IPv4/IPv6 loopback, RFC 1918 private ranges,
- * and TLDs: .local, .internal, .test.
+ * True for a local or internal hostname: localhost, the IPv4 and IPv6
+ * loopback addresses, the RFC 1918 private ranges, and the .local, .internal
+ * and .test TLDs.
  */
 function _isSafeHostname(hostname) {
   if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]") {
@@ -20,7 +20,10 @@ function _isSafeHostname(hostname) {
   return SAFE_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
 }
 
-/** Emit console.warn for token misuse patterns. Bypasses logger entirely. */
+/**
+ * Warn about a short token or a token on a public origin. Calls console.warn directly, so data-
+ * debug and the log cap do not apply.
+ */
 export function checkTokenWarnings(config) {
   try {
     if (config.token == null) return;
@@ -41,6 +44,6 @@ export function checkTokenWarnings(config) {
       );
     }
   } catch {
-    /* Never throw — safety guardrails degrade silently. */
+    /* The warnings are advisory; an error here must not reach the host app. */
   }
 }

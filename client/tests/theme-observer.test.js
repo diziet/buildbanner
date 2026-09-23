@@ -79,7 +79,7 @@ describe("theme-observer module", () => {
       const handle = startThemeObserver(shadowRoot, "auto");
       document.documentElement.setAttribute("data-theme", "dark");
 
-      // MutationObserver is async — flush microtasks
+      // MutationObserver callbacks run asynchronously; wait for them.
       await flushObserver();
 
       const overrideStyle = shadowRoot.getElementById("bb-theme-override");

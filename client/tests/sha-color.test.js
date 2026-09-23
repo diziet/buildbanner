@@ -46,7 +46,7 @@ describe("getShaColor", () => {
   });
 
   it("dark theme adjusts dark colors to be lighter", () => {
-    // 000000 is pure black — should be lightened but not to white
+    // 000000 is black: it is lightened, but not to white.
     const color = getShaColor("000000abcdef", "dark");
     expect(color).not.toBe("#000000");
     expect(color).not.toBe("#ffffff");
@@ -54,20 +54,20 @@ describe("getShaColor", () => {
   });
 
   it("light theme adjusts light colors to be darker", () => {
-    // ffffff is pure white — should be darkened for light theme
+    // ffffff is white: it is darkened for the light theme.
     const color = getShaColor("ffffffabcdef", "light");
     expect(color).not.toBe("#ffffff");
     expect(color).toMatch(/^#[0-9a-f]{6}$/);
   });
 
   it("dark theme passes through already-light colors", () => {
-    // cccccc has high luminance — should pass through for dark theme
+    // cccccc has a high luminance, so the dark theme keeps it unchanged.
     const color = getShaColor("cccccc", "dark");
     expect(color).toBe("#cccccc");
   });
 
   it("light theme passes through already-dark colors", () => {
-    // 222222 has low luminance — should pass through for light theme
+    // 222222 has a low luminance, so the light theme keeps it unchanged.
     const color = getShaColor("222222", "light");
     expect(color).toBe("#222222");
   });

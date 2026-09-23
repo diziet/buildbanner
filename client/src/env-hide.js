@@ -1,14 +1,14 @@
-/** Environment-based banner hiding logic. */
+/** Decide whether data-env-hide hides the banner for the server's environment. */
 
 /**
- * Check if the banner should be hidden based on the current environment.
+ * Return true when the server's environment is in envHideList, ignoring case.
  *
- * Returns false when environment is missing from the server response, even if
- * envHideList is configured — the banner renders by default when the server
- * does not report an environment.
+ * Returns false when the server response has no environment, even if
+ * envHideList is set: the banner renders when the server does not report an
+ * environment.
  *
- * @param {string[]|null} envHideList - List of environments to hide in.
- * @param {string|undefined} environment - Current environment from server response.
+ * @param {string[]|null} envHideList - Environments in which the banner hides.
+ * @param {string|undefined} environment - The `environment` field of the server response.
  * @returns {boolean} True if the banner should be hidden.
  */
 export function shouldHide(envHideList, environment) {

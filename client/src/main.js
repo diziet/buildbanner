@@ -1,4 +1,4 @@
-/** BuildBanner client entry point — init, destroy, and lifecycle. */
+/** The public API (init, destroy, refresh, update, isVisible) and the auto-init on page load. */
 
 import { parseConfig, resolveConfig } from "./config.js";
 import { createLogger } from "./logger.js";
@@ -15,7 +15,7 @@ import { readCache, writeCache, hasCacheEntry } from "./cache.js";
 
 const SYMBOL_KEY = Symbol.for("buildbanner");
 
-/** Get the singleton instance tracker. */
+/** Return the instance record stored on window, which may be pending or destroyed. */
 function _getInstance() {
   return window[SYMBOL_KEY];
 }
@@ -27,17 +27,20 @@ function _getActiveInstance() {
   return instance;
 }
 
-/** Set the singleton instance tracker. */
+/** Store the instance record on window under SYMBOL_KEY. */
 function _setInstance(instance) {
   window[SYMBOL_KEY] = instance;
 }
 
-/** Clear the singleton instance tracker. */
+/** Remove the stored instance record. */
 function _clearInstance() {
   window[SYMBOL_KEY] = null;
 }
 
-/** Tear down an instance — clear timers, stop polling, remove DOM, restore padding. */
+/**
+ * Stop the instance's uptime ticker, polling and theme observer, restore the padding, and remove
+ * its DOM.
+ */
 function _teardown(instance) {
   if (instance.tickerTimerId) {
     clearInterval(instance.tickerTimerId);
@@ -52,7 +55,7 @@ function _teardown(instance) {
   destroyBannerHost(instance.host, instance.fallbackStyle);
 }
 
-/** Fetch data or tear down DOM on failure. Returns data or null. */
+/** Fetch the banner data. On failure, remove the empty banner and its padding, and return null. */
 async function _fetchOrTeardown(ctx) {
   const { config, logger, pending, host, fallbackStyle, bannerHeight, pushState } = ctx;
   const data = await fetchBannerData(config.endpoint, {
@@ -70,7 +73,10 @@ async function _fetchOrTeardown(ctx) {
   return data;
 }
 
-/** Render segments, set up polling/dismiss, and register the instance. Returns instance or null. */
+/**
+ * Render the segments, start polling, add the dismiss button and store the instance. Returns it, or
+ * null when the banner is hidden or setup fails.
+ */
 function _renderAndSetup(ctx) {
   const {
     data, config, logger, pending,
@@ -135,13 +141,16 @@ function _renderAndSetup(ctx) {
   }
 }
 
-/** After rendering from cache, fetch in background and update if needed. */
+/**
+ * After a render from the cache, fetch in the background; re-render when the SHA or server_started
+ * changed.
+ */
 function _backgroundRefresh(instance, logger) {
   fetchBannerData(instance.config.endpoint, {
     token: instance.config.token,
     logger,
   }).then((newData) => {
-    if (!newData) return; // Fetch failed — keep showing cached data
+    if (!newData) return; // On a failed fetch, keep the cached banner.
     if (instance.destroyed) return;
 
     const isDataChanged = newData.sha !== instance.data.sha
@@ -156,11 +165,11 @@ function _backgroundRefresh(instance, logger) {
       writeCache(instance.config.endpoint, newData, instance.config.theme);
     }
   }).catch(() => {
-    // Never throw — background refresh is fire-and-forget
+    // Nothing awaits this promise; drop the error so that it never reaches the host page.
   });
 }
 
-/** Initialize the banner. */
+/** Initialize the banner. A call while another instance is active or pending does nothing. */
 async function init(opts = {}) {
   try {
     const existing = _getInstance();
@@ -184,7 +193,8 @@ async function init(opts = {}) {
 
     const logger = createLogger(config.debug);
 
-    // Render placeholder synchronously before fetch to eliminate flash
+    // Add the padding and an empty banner before the fetch, so the page does not flash when the
+    // data arrives.
     const bannerHeight = parseInt(config.height, 10) || DEFAULT_HEIGHT;
     const pushState = applyPush(config, bannerHeight, logger);
     const positionMode = resolvePositionMode(pushState.mode);
@@ -227,7 +237,7 @@ async function init(opts = {}) {
   }
 }
 
-/** Inject or update a <style> rule for the SHA background color in Shadow DOM. */
+/** Replace the <style> rule that sets the SHA background color in the shadow root. */
 function _injectShaColorStyle(shadowRoot, shaColor) {
   if (!shadowRoot) return;
   const existingId = "bb-sha-color-style";
@@ -240,7 +250,7 @@ function _injectShaColorStyle(shadowRoot, shaColor) {
   shadowRoot.appendChild(style);
 }
 
-/** Re-render segments from current instance data, preserving dismiss button. */
+/** Render the segments again from instance.data, with a new dismiss button. */
 function _rerender(instance) {
   if (instance.tickerTimerId) {
     clearInterval(instance.tickerTimerId);
@@ -261,7 +271,7 @@ function _rerender(instance) {
   }
 }
 
-/** Trigger a manual re-fetch and update segments. */
+/** Fetch the endpoint now and re-render. */
 async function refresh() {
   try {
     const instance = _getActiveInstance();
@@ -283,9 +293,9 @@ async function refresh() {
 }
 
 /**
- * Merge partial data into current state and re-render without fetching.
- * Top-level fields are replaced; `custom` is merged key-by-key per spec
- * so callers can update individual custom fields without losing others.
+ * Merge partial data into the current data and re-render, without a fetch.
+ * Top-level fields are replaced. `custom` is merged key by key, as the spec
+ * requires, so a caller can change one custom field and keep the others.
  */
 function update(partialData) {
   try {
@@ -306,7 +316,10 @@ function update(partialData) {
   }
 }
 
-/** Destroy the banner and clean up. All methods become no-ops after this. */
+/**
+ * Remove the banner and stop its timers and listeners. Afterwards the methods of window.BuildBanner
+ * do nothing until init() is called.
+ */
 function destroy() {
   try {
     const instance = _getInstance();
@@ -332,7 +345,7 @@ function isVisible() {
 
 const ORIGINAL_METHODS = { init, destroy, refresh, update, isVisible };
 
-/** Replace all public methods with no-ops except init (which re-enables). */
+/** Replace the public methods with no-ops; init restores the originals, then initializes. */
 function _disableMethods() {
   BuildBanner.destroy = () => {};
   BuildBanner.refresh = () => Promise.resolve();
@@ -349,7 +362,7 @@ function _restoreMethods() {
   Object.assign(BuildBanner, ORIGINAL_METHODS);
 }
 
-/** Find the BuildBanner script element in the document. */
+/** Return the first <script src> whose URL contains "buildbanner", or null. */
 function _findScriptEl() {
   const scripts = document.querySelectorAll("script[src]");
   for (const s of scripts) {
@@ -360,17 +373,20 @@ function _findScriptEl() {
   return null;
 }
 
-/** Auto-detect script tag and initialize on DOMContentLoaded. */
+/** Initialize from the script tag's data attributes, unless it has data-manual. */
 function _autoInit() {
   const scriptEl = _findScriptEl();
   if (!scriptEl) return;
   if (scriptEl.dataset.manual !== undefined) return;
 
   const config = parseConfig(scriptEl);
-  init(config).catch(() => { /* Never throw — auto-init is fire-and-forget. */ });
+  init(config).catch(() => { /* No caller awaits this; keep errors from the host page. */ });
 }
 
-/** Check if a script element has warm cache available for immediate render. */
+/**
+ * True when the script tag has data-cache="true", a data-endpoint, and a valid cache entry for that
+ * endpoint.
+ */
 function _hasCachedData(scriptEl) {
   if (!scriptEl) return false;
   if (scriptEl.dataset.manual !== undefined) return false;
@@ -384,8 +400,8 @@ if (typeof document !== "undefined") {
   const _scriptEl = _findScriptEl();
 
   if (document.body && _hasCachedData(_scriptEl)) {
-    // Cache exists and body is available — render immediately
-    // to avoid flash between page navigations
+    // With a cache entry and a <body>, render now instead of at DOMContentLoaded,
+    // so the banner does not flash between page navigations.
     _autoInit();
   } else if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", _autoInit);
@@ -395,11 +411,10 @@ if (typeof document !== "undefined") {
 }
 
 /**
- * Public API exposed as window.BuildBanner.
- * Note: the no-op-after-destroy guard via _disableMethods() only applies to
- * consumers using `window.BuildBanner` or the default export. ES module named
- * imports hold direct references to the original functions; those are guarded
- * by the internal _getActiveInstance() check instead.
+ * The public API, also set as window.BuildBanner.
+ * _disableMethods() makes the methods no-ops after destroy only on this object,
+ * that is, for `window.BuildBanner` and the default export. ES module named
+ * imports hold the original functions; _getActiveInstance() guards those.
  */
 const BuildBanner = { ...ORIGINAL_METHODS };
 
