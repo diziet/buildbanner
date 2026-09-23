@@ -1,10 +1,10 @@
 # Shared Contract
 
-Cross-language test fixtures and the JSON Schema that define the BuildBanner response contract. All server helpers (Python, Ruby, Node) must produce identical output for identical input.
+The cross-language test fixtures and the JSON Schema that define the BuildBanner response contract. Every server helper (Python, Ruby, Node) must produce the same output for the same input.
 
 ## JSON Schema
 
-`schema.json` — JSON Schema (draft-07) defining the `/buildbanner.json` response format.
+`schema.json` — the JSON Schema (draft-07) of the `/buildbanner.json` response.
 
 - **Required fields**: `sha` (string or null), `branch` (string or null).
 - **Optional fields**: `_buildbanner`, `sha_full`, `commit_date`, `repo_url`, `server_started`, `deployed_at`, `environment`, `port`, `app_name`, `tests`, `build`, `custom`.
@@ -12,7 +12,7 @@ Cross-language test fixtures and the JSON Schema that define the BuildBanner res
 
 ## Test Fixtures
 
-`test_fixtures.json` — shared input/output pairs loaded by all three language test suites.
+`test_fixtures.json` — input and output pairs that the test suites of all three languages load.
 
 ### Sections
 
@@ -62,7 +62,7 @@ end
 
 ## `BUILDBANNER_CUSTOM_*` Derivation Rule
 
-Environment variables matching `BUILDBANNER_CUSTOM_*` map to entries in the `custom` object:
+Each environment variable that matches `BUILDBANNER_CUSTOM_*` becomes an entry in the `custom` object:
 
 1. Strip the `BUILDBANNER_CUSTOM_` prefix.
 2. Lowercase the remaining suffix.
@@ -70,4 +70,4 @@ Environment variables matching `BUILDBANNER_CUSTOM_*` map to entries in the `cus
 
 Example: `BUILDBANNER_CUSTOM_MODEL=gpt4` produces `"custom": { "model": "gpt4" }`.
 
-The `extras` callback's `custom` values merge with env-var custom values. On key conflict, `extras` wins.
+The `custom` values from the `extras` callback are merged with the ones from environment variables. When both set the same key, the `extras` value wins.

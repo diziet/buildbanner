@@ -1,13 +1,13 @@
 # Static / nginx Example
 
-Serves a static `buildbanner.json` file via nginx, with no backend server required.
+This example serves a static `buildbanner.json` file with nginx. It needs no backend server.
 
 ## Files
 
-- `index.html` — Sample page with BuildBanner script tag
-- `nginx.conf` — nginx configuration serving static files
-- `Dockerfile` — Container image with nginx and entrypoint
-- `entrypoint.sh` — Generates `buildbanner.json` from environment variables at container startup
+- `index.html` — a sample page with the BuildBanner script tag
+- `nginx.conf` — the nginx configuration that serves the static files
+- `Dockerfile` — the container image, with nginx and the entrypoint
+- `entrypoint.sh` — writes `buildbanner.json` from environment variables when the container starts
 
 ## Usage
 
