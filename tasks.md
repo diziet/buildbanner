@@ -964,3 +964,97 @@ preamble gives the same rule as a convention; leave it to the owner.
 - `make test-js` passes (`tests/docs.test.js` reads the docs). `make doc-refs-check` passes.
 
 ---
+
+## Task 67: Make ten client tests check what their names say
+
+**Class:** weak test
+**Source:** test docstring audit, 2026-09-24, recorded in prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, "Test docstring audit".
+
+**Objective:**
+
+The audit changed the comments in these tests to say what the asserts check. Each test name still
+promises more:
+
+- `client/tests/accessibility.test.js:56` "status change updates live region content": the asserts
+  check that the live region exists with `role="status"` and `aria-live="polite"` (lines 65-67).
+  No assert reads the region's text.
+- `client/tests/accessibility.test.js:85` "uptime tick does not update live region": no timer is
+  advanced, so the `setInterval` in `startUptimeTicker` (`client/src/time.js`) never runs. The
+  test re-renders the same data and checks that the region has no `role`, as the test above it at
+  line 70 does.
+- `client/tests/accessibility.test.js:130` "close button responds to Enter",
+  `client/tests/accessibility.test.js:144` "close button responds to Space" and
+  `client/tests/dismiss.test.js:70` "button activates on %s key": `onDismiss` is called only by
+  the explicit `btn.click()`. The audit agent confirmed on 2026-09-24, with a throwaway script
+  outside the repo, that jsdom turns an Enter keydown, a Space keyup or a Space keydown into no
+  click.
+- `client/tests/main.test.js:308` "warm cache + body available: renders synchronously at parse
+  time": `vi.waitFor` (lines 322-327) retries until the sha segment reads "cached1", so a render
+  after the import returns also passes. The fetch mock returns the same data as the cache, so
+  "cached1" does not show that the render came from the cache.
+- `client/tests/polling.test.js:203` "stopPolling removes visibility listener": the assert (no
+  fetch after a `visibilitychange`) also holds with the listener attached, because `stopPolling`
+  sets `state.stopped` and `_onVisibilityChange` returns early when it is set
+  (`client/src/polling.js`).
+- `client/tests/polling.test.js:251` "failed poll does not flicker banner (banner DOM remains
+  present)": the asserts check a `div` the test creates itself. `startPolling` has no reference to
+  it and changes no DOM, so polling cannot make the asserts fail.
+- `client/tests/push.test.js:130` "dismiss callback triggers _teardown which calls removePush":
+  the test calls `removePush` directly. No dismiss callback or `_teardown` runs.
+- `client/tests/time.test.js:141` "self-cleans when element is removed from DOM": the text is
+  still "sentinel" 60 s after removal. That also holds if the interval keeps running and skips a
+  disconnected element; nothing checks that the interval was cleared.
+
+**Suggested path:**
+
+For each test, assert what its name says (the region's text, a real tick with fake timers, a key
+event without `btn.click()` where jsdom allows it, a render before the import's promise settles,
+the listener's removal, the real banner, the dismiss path through `main.js`, a cleared interval),
+or rename the test to what it checks. Do not change `client/src/`.
+
+**Tests:** the six files above
+
+- `make test-js` passes.
+
+---
+
+## Task 68: Make five server-data tests check what their names say
+
+**Class:** weak test
+**Source:** test docstring audit, 2026-09-24, recorded in prose-rollout report `~/projects/devops/prose-rollout/buildbanner.md`, "Test docstring audit".
+
+**Objective:**
+
+The audit changed the docstrings and comments in these tests to say what the asserts check. Each
+test name still promises more:
+
+- `python/tests/test_core.py:67` `test_server_started_is_iso_string`: asserts only that
+  `server_started` contains a `T`. `ruby/spec/buildbanner_spec.rb` parses the value with
+  `Time.iso8601`.
+- `python/tests/test_core.py:196` `test_extras_raises_omits_extras` and
+  `python/tests/test_fastapi.py:113` `test_extras_failure_omits_extras`: the asserts hold for a
+  response with only `_buildbanner`. The catch-all in `get_banner_data`
+  (`python/buildbanner/core.py`) returns `{'_buildbanner': {'version': 1}}` for any exception. Run
+  2026-09-24 on a copy of the base outside the repo: both tests still pass with the extras
+  `try/except` removed.
+- `tests/parity/test_python.py:250` `test_null_fields_omitted`: `_make_git_side_effect` replaces
+  `branch_output=None` and `remote_output=None` with the defaults, so only `git log` fails. Run
+  2026-09-24: `get_banner_data()` returned `branch` and `repo_url`, and no `sha`. The test checks
+  only `sha`, `branch` and `repo_url`, each "absent or not None".
+- `tests/parity/node.test.js:208` "null top-level fields are omitted from response": checks the
+  same three fields. With every git call failing, `node/lib/core.js` also leaves `sha_full`,
+  `commit_date`, `deployed_at`, `app_name`, `environment`, `port` and `custom` null, and none of
+  those is checked.
+
+**Suggested path:**
+
+Parse `server_started` with `datetime.fromisoformat`. In the extras tests, assert a git-derived
+field such as `sha` next to the missing extras. In both null-field tests, make every git command
+fail and assert that no top-level value is `None`/`null`. Do not change the code under test.
+
+**Tests:** `python/tests/test_core.py`, `python/tests/test_fastapi.py`,
+`tests/parity/test_python.py`, `tests/parity/node.test.js`
+
+- `make test-python`, `make test-parity` and `make test-js` pass.
+
+---
