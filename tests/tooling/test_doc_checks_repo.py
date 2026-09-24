@@ -19,13 +19,19 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_refs_scan_checks_a_named_minimum_set_of_references() -> None:
+    """Entries are names a rewording keeps: Workflow targets, config and schema files.
+
+    A span that only illustrates a sentence, such as one file of a class or a target
+    named inside another target's bullet, can go in a rewording; `make test-doc-checks`
+    then fails the PR.
+    """
     checker = refs.Checker(REPO_ROOT)
     for doc in ("docs/README.md", "CLAUDE.md"):
         checker.check_doc(doc)
     assert {
         "make gate",
         "make merge",
-        "make deps",
+        "make sync",
         "client/scripts/size-budget.js",
         "shared/schema.json",
         "docs/writing-style.md",

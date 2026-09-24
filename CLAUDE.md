@@ -19,15 +19,18 @@ layout (`~/projects/buildbanner/buildbanner/`) is pending.
   `origin/main`. Never run `gh pr merge` or merge into `main` locally.
 - `make sync` fetches and fast-forwards the current branch.
 - `make branches-gc` is report-only. `make branches-gc args=--delete` removes only merged branches.
-- `make gate` runs `doc-facts-check`, `doc-refs-check` and `gate-wiring-check`, then `test-ruby`,
-  `test-parity`, `test-python`, `test-js` and `test-tooling`. A docs-only PR runs the first three
-  and `test-js`. Run the one suite you are changing while you work; `make merge` runs the gate.
+- `make gate` runs `doc-facts-check`, `doc-refs-check`, `test-doc-checks` and
+  `gate-wiring-check`, then `test-ruby`, `test-parity`, `test-python`, `test-js` and
+  `test-tooling`. A docs-only PR runs the first four and `test-js`. Run the one suite you are
+  changing while you work; `make merge` runs the gate.
 - `make doctor` comes first when a gate fails for no visible reason. `make help` lists every target.
 - Prose follows `docs/writing-style.md`.
 - A value between `<!-- fact:NAME -->` and `<!-- /fact -->` in a doc is generated from
   `scripts/doc_facts_registry.py`. Change its source, then run `make doc-facts`; never edit the
   value by hand. `make doc-refs-check` fails on a doc path, `make` target or flag that does not
   exist; exempt a correct reference it cannot see in `docs/doc-refs-allow.txt`, with a reason.
+  `make test-doc-checks` fails, on docs-only PRs too, when a doc edit removes a reference named
+  in `tests/tooling/test_doc_checks_repo.py`.
   Both checks come from llm-reliability-benchmark; its
   [doc-checks.md](https://github.com/diziet/llm-reliability-benchmark/blob/main/docs/doc-checks.md)
   describes them.

@@ -8,10 +8,8 @@
     or a suite runs it;
 (b) every script under scripts/ is referenced from the Makefile, a hook, or
     another script (no orphan tooling);
-(c) the Makefile `gate` recipe runs scripts/gate.sh, and every Makefile target
-    whose `## ` comment says `Blocking gate` is in that script's full
-    `stages="..."` list. The list is parsed rather than searched as text,
-    because a target name inside a message string is not a stage.
+(c) every Blocking-gate target is a stage of scripts/gate.sh, and
+(d) the doc stages are in its docs-only list too: see gate_wiring_stages.py.
 The verdict is the exit code, never parsed output.
 """
 
@@ -26,16 +24,12 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from gate_wiring_stages import check_blocking_targets_wired, check_doc_stages_wired
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TEST_FILE_PATTERN = re.compile(
     r"(^|/)test_[^/]*\.py$|_test\.py$|\.(test|spec)\.[cm]?js$|_spec\.rb$"
 )
-BLOCKING_TARGET_PATTERN = re.compile(
-    r"^([A-Za-z0-9_-]+):.*## Blocking gate", re.MULTILINE
-)
-# Only the unindented full list matches, not the indented docs-only subset.
-STAGES_PATTERN = re.compile(r'^stages="([^"]*)"', re.MULTILINE)
-GATE_SCRIPT = "scripts/gate.sh"
 KNOWN_TEST_FILES: frozenset[str] = frozenset(
     {
         "client/tests/main.test.js",
@@ -50,6 +44,7 @@ KNOWN_TEST_FILES: frozenset[str] = frozenset(
         "tests/tooling/test_doc_checks_repo.py",
         "tests/tooling/test_doc_common.py",
         "tests/tooling/test_doc_facts.py",
+        "tests/tooling/test_gate_wiring_stages.py",
         "tests/tooling/test_hooks.py",
     }
 )
@@ -61,8 +56,6 @@ EXEMPT_TEST_FILES: dict[str, str] = {
         "with: npx playwright test --config tests/e2e/playwright.config.js"
     ),
 }
-# Targets that are the roots of the wiring and therefore need no caller.
-WIRING_ROOTS = frozenset({"gate"})
 
 
 @dataclass(frozen=True)
@@ -85,6 +78,8 @@ class Suite:
         return f"{self.target} in {self.cwd}"
 
 
+# test-doc-checks is not a suite here: it reruns one test-tooling file so the docs-only
+# gate runs it, and a file listed under two suites would fail check (a).
 SUITES: tuple[Suite, ...] = (
     # The root npm test script is `vitest run tests/`, so the list repeats its filter.
     Suite("test-js", ".", "vitest", ("tests/",), r"frontend\.sh exec \. npm test$"),
@@ -308,50 +303,6 @@ def check_scripts_referenced(root: Path) -> list[str]:
     return problems
 
 
-def blocking_targets(makefile_text: str) -> list[str]:
-    """Return Makefile targets whose help comment says `Blocking gate`."""
-    return BLOCKING_TARGET_PATTERN.findall(makefile_text)
-
-
-def recipe_text(makefile_text: str, target: str) -> str:
-    """Return the tab-indented recipe lines of `target`, or '' when it has no rule."""
-    lines = makefile_text.splitlines()
-    for index, line in enumerate(lines):
-        if re.match(rf"^{re.escape(target)}:", line):
-            recipe: list[str] = []
-            for body in lines[index + 1 :]:
-                if not body.startswith("\t"):
-                    break
-                recipe.append(body)
-            return "\n".join(recipe)
-    return ""
-
-
-def gate_stages(gate_text: str) -> list[str] | None:
-    """Return the full stage list from gate.sh, or None without a `stages=` line."""
-    match = STAGES_PATTERN.search(gate_text)
-    return match.group(1).split() if match else None
-
-
-def check_blocking_targets_wired(root: Path) -> list[str]:
-    """(c) `gate` runs gate.sh and every Blocking-gate target is in its stage list."""
-    makefile = root / "Makefile"
-    if not makefile.is_file():
-        return ["Makefile missing"]
-    makefile_text = makefile.read_text()
-    if GATE_SCRIPT not in recipe_text(makefile_text, "gate"):
-        return [f"Makefile `gate` recipe does not run {GATE_SCRIPT}"]
-    gate = root / GATE_SCRIPT
-    stages = gate_stages(gate.read_text()) if gate.is_file() else None
-    if stages is None:
-        return [f'{GATE_SCRIPT} has no stages="..." list']
-    return [
-        f"blocking target '{target}' is not a stage in {GATE_SCRIPT}"
-        for target in blocking_targets(makefile_text)
-        if target not in WIRING_ROOTS and target not in stages
-    ]
-
-
 def run_all(root: Path, tools: Toolchain) -> list[str]:
     """Run every check and return the combined list of problems."""
     listed, problems = listed_test_files(root, tools)
@@ -360,6 +311,7 @@ def run_all(root: Path, tools: Toolchain) -> list[str]:
         *check_tests_run(root, listed),
         *check_scripts_referenced(root),
         *check_blocking_targets_wired(root),
+        *check_doc_stages_wired(root),
     ]
 
 
