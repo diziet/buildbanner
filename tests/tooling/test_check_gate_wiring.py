@@ -13,20 +13,24 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 KNOWN = frozenset({"tests/alpha.test.js"})
+# The doc targets and GATE_SH's docs-only list let the mini repo pass checks (c) and (d),
+# which test_gate_wiring_stages.py tests.
 MAKEFILE = (
     "test-js: ## Blocking gate: vitest\n\tnpm test\n"
     "gate: ## Blocking gate: everything\n\tbash scripts/gate.sh\n"
     "helper: ## Advisory: uses tool\n\tpython scripts/tool.py\n"
+    "doc-facts-check: ## Blocking gate: facts\n\ttrue\n"
+    "doc-refs-check: ## Blocking gate: refs\n\ttrue\n"
+    "test-doc-checks: ## Blocking gate: doc tests\n"
+    "\tpytest tests/tooling/test_doc_checks_repo.py\n"
+)
+DOC_STAGES = "doc-facts-check doc-refs-check test-doc-checks"
+GATE_SH = (
+    f'#!/bin/sh\nstages="{DOC_STAGES} test-js"\n'
+    f'if [ "$1" = --docs-only ]; then\n  stages="{DOC_STAGES}"\nfi\n'
+    'for s in $stages; do make -s "$s"; done\n'
 )
 TOOLS = wiring.Toolchain(sys.executable, "0.0.0-test", "/nonexistent/ruby/bin")
-
-
-def _gate_sh(stages: str, extra: str = "") -> str:
-    """Return a gate.sh shaped like ours: one full `stages=` list, then a loop."""
-    return (
-        f'#!/bin/sh\nstages="{stages}"\n{extra}'
-        'for s in $stages; do make -s "$s"; done\n'
-    )
 
 
 @pytest.fixture
@@ -37,7 +41,7 @@ def mini_repo(tmp_path: Path) -> Path:
     (tmp_path / "Makefile").write_text(MAKEFILE)
     scripts = tmp_path / "scripts"
     scripts.mkdir()
-    (scripts / "gate.sh").write_text(_gate_sh("test-js"))
+    (scripts / "gate.sh").write_text(GATE_SH)
     (scripts / "tool.py").write_text("print('tool')\n")
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "alpha.test.js").write_text("test('alpha', () => {});\n")
@@ -240,69 +244,6 @@ def test_reference_inside_a_comment_does_not_count(mini_repo: Path) -> None:
     assert len(wiring.check_scripts_referenced(mini_repo)) == 1
 
 
-def test_unwired_blocking_target_fails_then_passes_when_added_to_gate(
-    mini_repo: Path,
-) -> None:
-    (mini_repo / "Makefile").write_text(
-        MAKEFILE + "test-ruby: ## Blocking gate: rspec\n\trspec\n"
-    )
-    problems = wiring.check_blocking_targets_wired(mini_repo)
-    assert len(problems) == 1 and "'test-ruby'" in problems[0]
-    (mini_repo / "scripts" / "gate.sh").write_text(_gate_sh("test-js test-ruby"))
-    assert wiring.check_blocking_targets_wired(mini_repo) == []
-
-
-@pytest.mark.parametrize(
-    ("path", "text"),
-    [
-        (
-            "scripts/gate.sh",
-            _gate_sh("test-js", 'echo "gate: docs-only change; skipping test-ruby"\n'),
-        ),
-        (
-            "scripts/merge_gate.py",
-            'MESSAGE = "run make test-ruby before the merge"\n',
-        ),
-    ],
-    ids=["gate-echo", "merge-script-string"],
-)
-def test_blocking_target_named_only_in_a_string_fails_by_name(
-    mini_repo: Path, path: str, text: str
-) -> None:
-    """A target name inside a message is not a stage; only the stage list counts."""
-    (mini_repo / "Makefile").write_text(
-        MAKEFILE + "test-ruby: ## Blocking gate: rspec\n\trspec\n"
-    )
-    (mini_repo / path).write_text(text)
-    problems = wiring.check_blocking_targets_wired(mini_repo)
-    assert len(problems) == 1 and "'test-ruby'" in problems[0]
-
-
-def test_gate_recipe_that_skips_gate_script_fails(mini_repo: Path) -> None:
-    (mini_repo / "Makefile").write_text(
-        MAKEFILE.replace("\tbash scripts/gate.sh\n", "\tmake -s test-js\n")
-    )
-    assert wiring.check_blocking_targets_wired(mini_repo) == [
-        "Makefile `gate` recipe does not run scripts/gate.sh"
-    ]
-
-
-def test_gate_script_without_stage_list_fails_closed(mini_repo: Path) -> None:
-    (mini_repo / "scripts" / "gate.sh").write_text("#!/bin/sh\nmake -s test-js\n")
-    assert wiring.check_blocking_targets_wired(mini_repo) == [
-        'scripts/gate.sh has no stages="..." list'
-    ]
-
-
-def test_stage_list_is_the_full_list_not_the_docs_only_subset() -> None:
-    gate_text = 'stages="test-js test"\nif [ "$d" = 1 ]; then\n  stages="test-js"\nfi\n'
-    assert wiring.gate_stages(gate_text) == ["test-js", "test"]
-
-
-def test_blocking_targets_are_parsed_from_help_comments() -> None:
-    assert wiring.blocking_targets(MAKEFILE) == ["test-js", "gate"]
-
-
 def test_cli_exit_codes(
     mini_repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -321,6 +262,5 @@ def test_cli_exit_codes(
     assert wiring.main(["--root", str(mini_repo / "nowhere"), *pins]) == 2
 
 
-def test_real_repo_blocking_targets_are_all_wired() -> None:
-    assert wiring.check_blocking_targets_wired(REPO_ROOT) == []
+def test_real_repo_scripts_are_all_referenced() -> None:
     assert wiring.check_scripts_referenced(REPO_ROOT) == []

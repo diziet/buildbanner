@@ -151,7 +151,10 @@ def merge_pull_request(
         with temp_worktree(repo, base_sha) as tree:
             preview_merge(tree, pr.head_sha)
             if docs_only:
-                say("merge: docs-only PR; running gate-wiring-check and test-js only")
+                say(
+                    "merge: docs-only PR; running the doc checks, test-doc-checks, "
+                    "gate-wiring-check and test-js only"
+                )
             run_preview_gate(tree, docs_only, gate_cmd)
         verify_parents_unchanged(repo, pr, base_sha)
         if dry_run:

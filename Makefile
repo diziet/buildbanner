@@ -7,7 +7,7 @@
 .PHONY: help install deps node-install node-lock venv bundle doctor hooks-install \
         test test-js test-python test-ruby test-parity test-tooling build clean \
         gate gate-wiring-check worktree sync merge branches-gc doc-refs-check doc-facts \
-        doc-facts-check
+        doc-facts-check test-doc-checks
 
 # ---- Pins (the single source; doctor and install both read these) -----------------------------
 NODE_VERSION   := 26.10.0
@@ -85,7 +85,10 @@ test-js: ## Blocking gate: vitest under the pinned Node for tests/ (with tests/p
 test-tooling: ## Blocking gate: tests for scripts/ and .githooks/, run against throwaway git repos
 	$(PY) -m pytest -q -p no:cacheprovider --rootdir=. tests/tooling
 
-gate: ## Blocking gate: doc-facts-check, doc-refs-check, gate-wiring-check, then every test suite, under the gate lock (stage list in scripts/gate.sh)
+test-doc-checks: ## Blocking gate, also in the docs-only gate: pytest on tests/tooling/test_doc_checks_repo.py only (seconds); a .md edit can remove a span that test requires, and docs-only skips test-tooling
+	$(PY) -m pytest -q -p no:cacheprovider --rootdir=. tests/tooling/test_doc_checks_repo.py
+
+gate: ## Blocking gate: doc-facts-check, doc-refs-check, test-doc-checks, gate-wiring-check, then every test suite, under the gate lock (stage list in scripts/gate.sh)
 	$(LOCKED) bash scripts/gate.sh
 
 gate-wiring-check: ## Blocking gate: every test file run by exactly one suite, no orphan script, blocking targets wired
