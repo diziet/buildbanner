@@ -141,7 +141,7 @@ describe("shared/test_fixtures.json", () => {
       if (field === null) {
         continue;
       }
-      // custom.* stands for any custom key, so there is no exact field to check.
+      // custom.* stands for any custom key, so only custom is checked against the schema.
       if (field.startsWith("custom.")) {
         expect(schemaProps).toContain("custom");
         continue;

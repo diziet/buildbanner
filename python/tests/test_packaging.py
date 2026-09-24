@@ -4,7 +4,6 @@ import importlib
 
 
 def test_import_buildbanner() -> None:
-    """Top-level buildbanner package is importable."""
     mod = importlib.import_module('buildbanner')
     assert mod is not None
 
@@ -16,7 +15,6 @@ def test_buildbanner_blueprint_importable() -> None:
 
 
 def test_buildbannerMiddleware_importable_from_toplevel() -> None:
-    """BuildBannerMiddleware is importable from the top-level package."""
     from buildbanner import BuildBannerMiddleware
     assert BuildBannerMiddleware is not None
 

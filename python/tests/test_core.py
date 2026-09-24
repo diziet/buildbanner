@@ -44,7 +44,6 @@ class TestGetBannerDataHappyPath:
         assert 'server_started' in data
 
     def test_buildbanner_version_is_1(self):
-        """_buildbanner.version == 1."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             core = _reload_core()
 
@@ -52,7 +51,6 @@ class TestGetBannerDataHappyPath:
         assert data['_buildbanner'] == {'version': 1}
 
     def test_sha_is_7_chars(self):
-        """sha is 7 characters (short SHA)."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             core = _reload_core()
 
@@ -60,7 +58,6 @@ class TestGetBannerDataHappyPath:
         assert len(data['sha']) == 7
 
     def test_sha_full_is_40_chars(self):
-        """sha_full is 40 characters (full SHA)."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             core = _reload_core()
 
@@ -68,7 +65,7 @@ class TestGetBannerDataHappyPath:
         assert len(data['sha_full']) == 40
 
     def test_server_started_is_iso_string(self):
-        """server_started is a valid ISO 8601 string."""
+        """server_started contains the character 'T'."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             core = _reload_core()
 
@@ -80,7 +77,6 @@ class TestEnvVarOverrides:
     """Tests for environment variable overrides."""
 
     def test_env_vars_override_git(self):
-        """Env vars override git-derived values."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             core = _reload_core(
                 BUILDBANNER_SHA='fedcba1234567890fedcba1234567890fedcba12',
@@ -128,7 +124,7 @@ class TestEnvVarOverrides:
 
 
 class TestUrlSanitization:
-    """URL sanitization tests using shared fixtures."""
+    """URL sanitization tests: the shared fixtures and a URL with no hostname."""
 
     @pytest.mark.parametrize(
         'fixture',
@@ -143,7 +139,6 @@ class TestUrlSanitization:
         assert result == fixture['expected']
 
     def test_malformed_url_with_no_hostname_returns_none(self):
-        """URL with no hostname returns None."""
         from buildbanner.core import sanitize_repo_url
 
         assert sanitize_repo_url('https:///path') is None
@@ -179,7 +174,6 @@ class TestExtras:
     """Tests for extras callback."""
 
     def test_extras_merge(self):
-        """Extras values merge into response."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             core = _reload_core()
 
@@ -190,7 +184,6 @@ class TestExtras:
         assert data['custom']['region'] == 'us-east-1'
 
     def test_extras_custom_wins_over_env(self):
-        """Extras custom values win over env var custom values."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             core = _reload_core(BUILDBANNER_CUSTOM_REGION='eu-west-1')
 
@@ -201,7 +194,7 @@ class TestExtras:
         assert data['custom']['region'] == 'us-east-1'
 
     def test_extras_raises_omits_extras(self):
-        """If extras raises, extras are omitted but response is still valid."""
+        """If extras raises, the response still has _buildbanner version 1."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             core = _reload_core()
 
@@ -217,7 +210,6 @@ class TestCustomFieldEdgeCases:
     """Edge cases for custom fields."""
 
     def test_custom_int_stringified(self):
-        """Custom int values are stringified."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             core = _reload_core()
 
@@ -228,7 +220,6 @@ class TestCustomFieldEdgeCases:
         assert data['custom']['workers'] == '4'
 
     def test_custom_none_omitted(self):
-        """Custom None values are omitted."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             core = _reload_core()
 
@@ -244,7 +235,10 @@ class TestNoGitNoEnv:
     """Tests for missing git and environment."""
 
     def test_no_git_no_env_returns_null_fields(self):
-        """No git, no env -> null/missing fields but still valid response."""
+        """No git, no env -> sha and branch are None or missing.
+
+        _buildbanner is {'version': 1} and server_started is present.
+        """
         with patch('subprocess.run', side_effect=make_git_side_effect(
             log_output=None,
             branch_output=None,
@@ -255,16 +249,14 @@ class TestNoGitNoEnv:
         data = core.get_banner_data()
         assert data['_buildbanner'] == {'version': 1}
         assert 'server_started' in data
-        # Null fields are omitted.
         assert data.get('sha') is None or 'sha' not in data
         assert data.get('branch') is None or 'branch' not in data
 
 
 class TestProductionTokenWarning:
-    """Tests for the INFO log about token auth in production."""
+    """Tests for the log record about token auth in production."""
 
     def test_production_env_with_token_logs_info(self, caplog):
-        """Production env with token logs an info message."""
         with caplog.at_level(logging.INFO):
             with patch('subprocess.run',
                        side_effect=make_git_side_effect()):
@@ -323,7 +315,6 @@ class TestValidateToken:
         assert any('shorter than 16' in r.message for r in caplog.records)
 
     def test_missing_bearer_prefix_returns_false(self):
-        """Missing Bearer prefix returns False."""
         from buildbanner.core import validate_token
         assert validate_token(
             'Token something', VALID_TEST_TOKEN,

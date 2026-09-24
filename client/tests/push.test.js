@@ -133,7 +133,7 @@ describe("push module", () => {
 
       expect(readInlinePadding("paddingTop")).toBe(28);
 
-      // Another script adds padding after init; then the banner is dismissed.
+      // Another script adds padding after init; then removePush is called.
       setHtmlPadding("paddingTop", 38);
       removePush(28, pushState, config);
       expect(readInlinePadding("paddingTop")).toBe(10);

@@ -254,7 +254,7 @@ def test_merges_via_gh_with_merge_commit_subject(pr: MergeFixture) -> None:
 def test_gate_lock_covers_verification_and_merge(
     pr: MergeFixture, monkeypatch: pytest.MonkeyPatch, stage: str
 ) -> None:
-    """A competing local gate cannot acquire the lock before the merge finishes."""
+    """A competing local gate cannot acquire the lock at the start of `stage`."""
     original = getattr(merge, stage)
     checked = False
 

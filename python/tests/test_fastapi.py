@@ -52,7 +52,6 @@ class TestHappyPath:
         assert data['_buildbanner']['version'] == 1
 
     def test_cache_control_no_store(self):
-        """Response includes Cache-Control: no-store."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             cls = _reload_fastapi()
             app = _create_app(cls)
@@ -112,7 +111,10 @@ class TestExtras:
         assert data['custom']['model'] == 'gpt-4'
 
     def test_extras_failure_omits_extras(self):
-        """Extras callback that raises is caught; response still valid."""
+        """Extras callback that raises is caught.
+
+        The response is 200 with _buildbanner version 1 and no tests key.
+        """
         def bad_extras():
             raise RuntimeError('extras boom')
 
@@ -217,7 +219,7 @@ class TestPassThrough:
 
 
 class TestDetachedHead:
-    """Detached HEAD fixture tests."""
+    """Detached HEAD tests."""
 
     def test_detached_head_with_tag(self):
         """Detached HEAD falls back to tag name."""

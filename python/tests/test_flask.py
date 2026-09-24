@@ -50,7 +50,6 @@ class TestHappyPath:
         assert data['_buildbanner']['version'] == 1
 
     def test_cache_control_no_store(self):
-        """Response includes Cache-Control: no-store."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             factory = _reload_flask()
             app = _create_app(factory)
@@ -76,7 +75,6 @@ class TestCustomPath:
     """Custom path tests."""
 
     def test_custom_path_works(self):
-        """Custom path serves the endpoint correctly."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             factory = _reload_flask()
             app = _create_app(factory, path='/custom/info.json')
@@ -146,7 +144,7 @@ class TestTokenAuth:
 
 
 class TestOtherRoutes:
-    """Tests that middleware doesn't break other routes."""
+    """Tests for the other routes of an app with the buildbanner blueprint."""
 
     def test_other_routes_still_work(self):
         """Other routes on the app are unaffected by the blueprint."""

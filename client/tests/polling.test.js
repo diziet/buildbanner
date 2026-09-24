@@ -133,7 +133,7 @@ describe("polling module", () => {
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
 
-    // The immediate fetch runs on the next async tick.
+    // With 0 ms advanced, fetchFn and onData have each been called once.
     await vi.advanceTimersByTimeAsync(0);
     expect(fetchFn).toHaveBeenCalledTimes(1);
     expect(onData).toHaveBeenCalledTimes(1);

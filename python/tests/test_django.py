@@ -75,7 +75,6 @@ class TestHappyPath:
         assert data['_buildbanner']['version'] == 1
 
     def test_cache_control_no_store(self):
-        """Response includes Cache-Control: no-store."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             cls = _reload_django()
             middleware = cls(_dummy_get_response)

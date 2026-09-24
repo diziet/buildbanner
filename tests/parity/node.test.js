@@ -216,7 +216,7 @@ describe('parity — JSON structure and field names', () => {
 
     expect(data._buildbanner).toEqual({ version: 1 });
     expect(data).toHaveProperty('server_started');
-    // A null field is omitted, not sent as null.
+    // A null sha, branch or repo_url is omitted, not sent as null.
     if ('sha' in data) expect(data.sha).not.toBeNull();
     if ('branch' in data) expect(data.branch).not.toBeNull();
     if ('repo_url' in data) expect(data.repo_url).not.toBeNull();
