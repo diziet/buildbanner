@@ -28,14 +28,17 @@ def _frontend(*args: str, node_version: str | None) -> subprocess.CompletedProce
 
 
 def test_frontend_requires_make_pin() -> None:
-    """A direct invocation without the Makefile pin fails before installation."""
+    """A direct invocation without the Makefile pin fails with "set by Makefile"."""
     result = _frontend("doctor", node_version=None)
     assert result.returncode != 0
     assert "set by Makefile" in result.stderr
 
 
 def test_frontend_doctor_never_installs_missing_runtime() -> None:
-    """A missing pin reports its sanctioned repair instead of invoking a download."""
+    """Without the pinned Node, `doctor` reports its sanctioned repair, `make node-install`.
+
+    No `.tools/node-v0.0.0-test-*` path exists after the run.
+    """
     result = _frontend("doctor", node_version="0.0.0-test")
     assert result.returncode == 1
     assert "make node-install" in result.stderr

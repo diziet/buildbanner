@@ -193,7 +193,7 @@ describe("BuildBanner main", () => {
     resolveFetch(mockResponse({ sha: "abc1234", branch: "main" }));
     await initPromise;
 
-    // After the fetch, the segments are rendered.
+    // After the fetch, the sha segment shows the fetched sha.
     expect(shadow.querySelector("[data-segment='sha']").textContent).toBe("abc1234");
   });
 
@@ -315,7 +315,7 @@ describe("BuildBanner parse-time cache rendering", () => {
     createBannerScript(endpoint, { cache: true });
     setReadyState("loading");
 
-    // With a cache entry, importing the module runs auto-init at once.
+    // With a cache entry, importing the module runs auto-init.
     await import("../src/main.js");
 
     // The banner renders without waiting for DOMContentLoaded.

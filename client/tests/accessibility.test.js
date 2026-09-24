@@ -92,7 +92,7 @@ describe("ARIA live region", () => {
     };
     render(data, {}, tracker);
 
-    // Simulate uptime tick — re-render with same data
+    // Re-render with same data. No timer is advanced, so no uptime tick runs.
     wrapper.textContent = "";
     render(data, {}, tracker);
 
@@ -136,7 +136,7 @@ describe("keyboard navigation", () => {
     const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
     btn.dispatchEvent(event);
     // Native <button> converts Enter keydown to click in real browsers.
-    // jsdom does not synthesize this, so verify via explicit click as well.
+    // jsdom does not synthesize this; only the btn.click() below calls onDismiss.
     btn.click();
     expect(onDismiss).toHaveBeenCalled();
   });
@@ -150,7 +150,7 @@ describe("keyboard navigation", () => {
     const event = new KeyboardEvent("keyup", { key: " ", bubbles: true });
     btn.dispatchEvent(event);
     // Native <button> converts Space keyup to click in real browsers.
-    // jsdom does not synthesize this, so verify via explicit click as well.
+    // jsdom does not synthesize this; only the btn.click() below calls onDismiss.
     btn.click();
     expect(onDismiss).toHaveBeenCalled();
   });

@@ -154,7 +154,6 @@ class TestBuildbannerVersion:
     """_buildbanner.version must be 1."""
 
     def test_version_is_1(self):
-        """_buildbanner.version is always 1."""
         with _load_core() as core:
             data = core.get_banner_data()
 
@@ -202,7 +201,6 @@ class TestCustomEnvVars:
     """BUILDBANNER_CUSTOM_* env vars must produce identical custom maps."""
 
     def test_lowercased_suffix_maps_to_custom(self):
-        """Suffix is lowercased and mapped to custom object."""
         with _load_core(
             BUILDBANNER_CUSTOM_MODEL='gpt-4',
             BUILDBANNER_CUSTOM_REGION='us-east-1',
@@ -250,7 +248,7 @@ class TestJsonStructure:
         assert data['_buildbanner']['version'] == 1
 
     def test_null_fields_omitted(self):
-        """Null top-level fields are absent, not present with None."""
+        """With git log failing, sha, branch and repo_url are each absent or not None."""
         with _load_core(git_kwargs={
             'log_output': None,
             'branch_output': None,

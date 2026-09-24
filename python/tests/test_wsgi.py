@@ -120,7 +120,6 @@ class TestHeaders:
         assert capture.get_header('Content-Type') == 'application/json'
 
     def test_cache_control_no_store(self):
-        """Response includes Cache-Control: no-store."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             factory = _reload_wsgi()
             app = factory(_dummy_wsgi_app)
@@ -131,7 +130,6 @@ class TestHeaders:
         assert capture.get_header('Cache-Control') == 'no-store'
 
     def test_content_length_present(self):
-        """Response includes Content-Length header."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             factory = _reload_wsgi()
             app = factory(_dummy_wsgi_app)
@@ -187,7 +185,6 @@ class TestInterception:
         assert body == b'ok'
 
     def test_custom_path_works(self):
-        """Custom path serves the endpoint correctly."""
         with patch('subprocess.run', side_effect=make_git_side_effect()):
             factory = _reload_wsgi()
             app = factory(_dummy_wsgi_app, path='/custom/info.json')
