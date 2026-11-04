@@ -52,8 +52,8 @@ KNOWN_TEST_FILES: frozenset[str] = frozenset(
 # file is gone or a suite runs it, so an exemption cannot outlive its reason.
 EXEMPT_TEST_FILES: dict[str, str] = {
     "tests/e2e/smoke.test.js": (
-        "Playwright test in a real Chromium; make deps installs no browser. Run it "
-        "with: npx playwright test --config tests/e2e/playwright.config.js"
+        "Playwright test in the system Google Chrome, which make deps does not install. "
+        "Run it with: npx playwright test --config tests/e2e/playwright.config.js"
     ),
 }
 
