@@ -55,7 +55,7 @@ venv: ## Sanctioned path: recreate .venv with the pinned uv-managed Python and i
 bundle: ## Sanctioned path: install the gems in ruby/Gemfile.lock into ruby/vendor/bundle when bundle check reports one missing
 	cd ruby && { $(RUBY_ENV) bundle check >/dev/null || $(RUBY_ENV) bundle install; }
 
-doctor: ## Advisory preflight (seconds, no build, no side effects): uv, gh, Node, Python and Ruby pins, installed dependencies, hooks
+doctor: ## Advisory preflight (seconds, no build, no side effects): uv, gh, Node, Python and Ruby pins, installed dependencies, hooks, the system Google Chrome
 	@NODE_VERSION=$(NODE_VERSION) PYTHON_VERSION=$(PYTHON_VERSION) RUBY_BIN=$(RUBY_BIN) UV=$(UV) VENV=$(VENV) \
 	  bash scripts/doctor.sh
 

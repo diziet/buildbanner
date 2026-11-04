@@ -87,6 +87,15 @@ else
   fail "core.hooksPath is '${hooks_path:-unset}', expected .githooks" "make hooks-install"
 fi
 
+# 6. The system Google Chrome that tests/e2e/playwright.config.js launches (channel 'chrome').
+# Chrome updates itself, so the probe checks only that it is installed, not its version.
+chrome_app="/Applications/Google Chrome.app"
+if [ -x "$chrome_app/Contents/MacOS/Google Chrome" ]; then
+  ok "Google Chrome $(plutil -extract CFBundleShortVersionString raw -o - "$chrome_app/Contents/Info.plist") at $chrome_app"
+else
+  fail "Google Chrome missing at $chrome_app (the e2e smoke tests launch it)" "brew install --cask google-chrome"
+fi
+
 if [ "$failures" -gt 0 ]; then
   echo "doctor: $failures problem(s); fix commands above" >&2
   exit 1
